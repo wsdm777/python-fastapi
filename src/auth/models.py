@@ -1,10 +1,12 @@
 from datetime import UTC, datetime
 from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTable
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import TIMESTAMP, Boolean, Column, ForeignKey, Integer, String
+from sqlalchemy import TIMESTAMP, Boolean, Column, DateTime, ForeignKey, Integer, String, func
 
 Base = declarative_base()
 
+def timenow():
+    return datetime.now(UTC).replace(tzinfo=None)
 
 class User(SQLAlchemyBaseUserTable[int], Base):
     __tablename__ = "user"
@@ -16,7 +18,7 @@ class User(SQLAlchemyBaseUserTable[int], Base):
     is_verified: bool = Column(Boolean, default=False)
     name: str = Column(String, nullable=False)
     role_id: int = Column(Integer, ForeignKey("role.id"))
-    register_at = Column(TIMESTAMP, default=datetime.now(UTC).replace(tzinfo=None))
+    register_at = Column(DateTime, default=timenow)
 
 
 class Role(Base):
