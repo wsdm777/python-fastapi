@@ -2,9 +2,9 @@ from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
-from models import Base
+from src.auth.models import Base
 from alembic import context
-from config import DB_HOST, DB_PORT, DB_USER, DB_NAME, DB_PASS
+from src.config import DB_HOST, DB_PORT, DB_USER, DB_NAME, DB_PASS
 
 config = context.config
 
