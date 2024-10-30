@@ -1,7 +1,9 @@
 from typing import AsyncGenerator
 
+from certifi import where
 from fastapi import Depends
 from fastapi_users.db import SQLAlchemyUserDatabase
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 
@@ -23,3 +25,10 @@ async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
 
 async def get_user_db(session: AsyncSession = Depends(get_async_session)):
     yield SQLAlchemyUserDatabase(session, User)
+
+
+async def get_user_id(userid: int, session: AsyncSession = Depends(get_async_session)):
+    stmt = select(User).where(User.id == userid)
+    result = await session.execute(stmt)
+    user = result.scalars().one()
+    return user
