@@ -3,10 +3,12 @@ from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTable
 from sqlalchemy import TIMESTAMP, Boolean, ForeignKey, Integer, String
 from sqlalchemy.orm import declarative_base, Mapped, mapped_column
 
+
 Base = declarative_base()
 
 def timenow():
     return datetime.now(UTC).replace(tzinfo=None)
+
 
 class User(SQLAlchemyBaseUserTable[int], Base):
     __tablename__ = "user"
@@ -19,7 +21,6 @@ class User(SQLAlchemyBaseUserTable[int], Base):
     name: Mapped[str] = mapped_column(String, nullable=False)
     role_id: Mapped[int] = mapped_column(Integer, ForeignKey("role.id"))
     register_at = mapped_column(TIMESTAMP(timezone=True), default=timenow)
-
 
 
 class Role(Base):
