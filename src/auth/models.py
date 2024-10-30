@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTable
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import TIMESTAMP, Boolean, Column, ForeignKey, Integer, String
+from sqlalchemy import TIMESTAMP, Boolean, ForeignKey, Integer, String
+from sqlalchemy.orm import declarative_base, Mapped, mapped_column
 
 Base = declarative_base()
 
@@ -10,21 +10,21 @@ def timenow():
 
 class User(SQLAlchemyBaseUserTable[int], Base):
     __tablename__ = "user"
-    id: int = Column(Integer, primary_key=True)
-    email: str = Column(String, nullable=False)
-    hashed_password: str = Column(String, nullable=False)
-    is_active: bool = Column(Boolean, default=True)
-    is_superuser: bool = Column(Boolean, default=False)
-    is_verified: bool = Column(Boolean, default=False)
-    name: str = Column(String, nullable=False)
-    role_id: int = Column(Integer, ForeignKey("role.id"))
-    register_at = Column(TIMESTAMP(timezone=True), default=timenow)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    email: Mapped[str] = mapped_column(String, nullable=False)
+    hashed_password: Mapped[str] = mapped_column(String, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_superuser: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    role_id: Mapped[int] = mapped_column(Integer, ForeignKey("role.id"))
+    register_at = mapped_column(TIMESTAMP(timezone=True), default=timenow)
 
 
 
 class Role(Base):
     __tablename__ = "role"
-    id: int = Column(Integer, primary_key=True)
-    name: str = Column(String, nullable=False)
-    permiss: str = Column(String)
-    descr: str = Column(String)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    permiss: Mapped[str] = mapped_column(String)
+    descr: Mapped[str] = mapped_column(String)

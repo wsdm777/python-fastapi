@@ -1,9 +1,5 @@
-from typing import Optional
-from urllib import response
-
-from fastapi import Depends, Request, Response, exceptions
-from fastapi.security import OAuth2PasswordRequestForm
-from fastapi_users import BaseUserManager, IntegerIDMixin, models
+from fastapi import Depends
+from fastapi_users import BaseUserManager, IntegerIDMixin
 from src.auth.models import User
 from src.database import get_user_db
 from src.config import SECRET
