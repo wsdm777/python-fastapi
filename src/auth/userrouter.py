@@ -1,18 +1,24 @@
 from typing import Annotated
 from fastapi import APIRouter, Depends
-from src.database import get_user_id
+from sqlalchemy import select
+from src.database import get_async_session
 from src.auth.authentification import fastapi_users
 from src.auth.models import User
 from src.auth.schemas import UserRead
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 router = APIRouter(
     prefix="/user",
     tags=["user"])
 
+
 current_user = fastapi_users.current_user()
 
+
 current_super_user = fastapi_users.current_user(superuser = True)
+
+
 
 @router.get("/me", response_model=UserRead)
 def get_me(user: User = Depends(current_user)):
@@ -20,9 +26,13 @@ def get_me(user: User = Depends(current_user)):
 
 
 @router.get("/{user_id}", response_model=UserRead)
-def get_user(user: Annotated[
+async def get_user_by_id(user: Annotated[
         User,
         Depends(current_super_user)],
-        userdata = Depends(get_user_id)
+        user_id: int,
+        session: AsyncSession = Depends(get_async_session)
     ):
-    return UserRead.model_validate(userdata)
+    stmt = select(User).where(User.id == user_id)
+    result = await session.execute(stmt)
+    result = result.scalars().one()
+    return UserRead.model_validate(result)

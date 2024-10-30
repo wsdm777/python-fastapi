@@ -3,6 +3,7 @@ from fastapi import Depends
 from fastapi_users.db import SQLAlchemyUserDatabase
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from src.post.models import Post
 from src.config import DB_HOST, DB_NAME, DB_PASS, DB_PORT, DB_USER
 from src.auth.models import User
 
@@ -23,8 +24,8 @@ async def get_user_db(session: AsyncSession = Depends(get_async_session)):
     yield SQLAlchemyUserDatabase(session, User)
 
 
-async def get_user_id(userid: int, session: AsyncSession = Depends(get_async_session)):
-    stmt = select(User).where(User.id == userid)
+async def get_post_by_id(postid: int, session: AsyncSession = Depends(get_async_session)):
+    stmt = select(Post).where(Post.id == postid)
     result = await session.execute(stmt)
-    user = result.scalars().one()
-    return user
+    post = result.scalars().one()
+    return post

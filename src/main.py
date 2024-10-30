@@ -1,7 +1,9 @@
 from fastapi import FastAPI
 from src.auth.authentification import fastapi_users, auth_backend
 from src.auth.schemas import UserCreate, UserRead
-from src.users.router import router as userRouter
+from src.auth.userrouter import router as userRouter
+from src.post.router import router as postRouter
+
 
 app = FastAPI(title="TestApp")
 
@@ -11,15 +13,18 @@ app.include_router(
     prefix="/auth",
     tags=["auth"]
 )
+
 app.include_router(
     fastapi_users.get_register_router(UserRead, UserCreate),
     prefix="/auth/jwt",
     tags=["auth"]
 )
 app.include_router(
+    
     fastapi_users.get_reset_password_router(),
     prefix="/auth",
     tags=["auth"],
 )
 
 app.include_router(userRouter)
+app.include_router(postRouter)

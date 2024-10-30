@@ -9,6 +9,13 @@ Base = declarative_base()
 def timenow():
     return datetime.now(UTC).replace(tzinfo=None)
 
+class Role(Base):
+    __tablename__ = "role"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    permiss: Mapped[str] = mapped_column(String)
+    descr: Mapped[str] = mapped_column(String)
+
 
 class User(SQLAlchemyBaseUserTable[int], Base):
     __tablename__ = "user"
@@ -19,13 +26,5 @@ class User(SQLAlchemyBaseUserTable[int], Base):
     is_superuser: Mapped[bool] = mapped_column(Boolean, default=False)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     name: Mapped[str] = mapped_column(String, nullable=False)
-    role_id: Mapped[int] = mapped_column(Integer, ForeignKey("role.id"))
+    role_id: Mapped[int] = mapped_column(Integer, ForeignKey(Role.id))
     register_at = mapped_column(TIMESTAMP(timezone=True), default=timenow)
-
-
-class Role(Base):
-    __tablename__ = "role"
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(String, nullable=False)
-    permiss: Mapped[str] = mapped_column(String)
-    descr: Mapped[str] = mapped_column(String)
