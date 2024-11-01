@@ -9,6 +9,6 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
     reset_password_token_secret = SECRET
     verification_token_secret = SECRET
 
- 
+
 async def get_user_manager(user_db=Depends(get_user_db)):
     yield UserManager(user_db)

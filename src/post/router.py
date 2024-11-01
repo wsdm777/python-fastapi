@@ -8,10 +8,7 @@ from src.database import get_async_session
 from src.auth.models import User
 from src.auth.userrouter import current_user
 
-router = APIRouter(
-    prefix="/post",
-    tags=["post"])
-
+router = APIRouter(prefix="/post", tags=["post"])
 
 
 @router.post("", response_model=goodResponse)
@@ -19,18 +16,15 @@ async def postPost(
     topic: str,
     content: str | None = None,
     user: User = Depends(current_user),
-    session: AsyncSession = Depends(get_async_session)
+    session: AsyncSession = Depends(get_async_session),
 ):
-    query = insert(Post).values({
-        "user_id" : user.id,
-        "topic": topic,
-        "content": content
-    })
+    query = insert(Post).values(
+        {"user_id": user.id, "topic": topic, "content": content}
+    )
     await session.execute(query)
     await session.commit()
-    return {
-        "status": 201
-    }
+    return {"status": 201}
+
 
 @router.get("/{id}")
 async def get_user_by_id(id: int, session: AsyncSession = Depends(get_async_session)):
@@ -38,4 +32,3 @@ async def get_user_by_id(id: int, session: AsyncSession = Depends(get_async_sess
     result = await session.execute(stmt)
     result = result.scalars().one()
     return PostRead.model_validate(result, from_attributes=True)
-    

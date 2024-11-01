@@ -6,8 +6,10 @@ from sqlalchemy.orm import declarative_base, Mapped, mapped_column
 
 Base = declarative_base()
 
+
 def timenow():
     return datetime.now(UTC).replace(tzinfo=None)
+
 
 class Role(Base):
     __tablename__ = "role"
