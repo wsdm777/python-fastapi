@@ -8,7 +8,7 @@ Base = declarative_base()
 
 
 def timenow():
-    return datetime.now(UTC).replace(tzinfo=None)
+    return datetime.now(UTC).replace(tzinfo=None, microsecond=0)
 
 
 class Role(Base):
@@ -29,4 +29,4 @@ class User(SQLAlchemyBaseUserTable[int], Base):
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     name: Mapped[str] = mapped_column(String, nullable=False)
     role_id: Mapped[int] = mapped_column(Integer, ForeignKey(Role.id))
-    register_at = mapped_column(TIMESTAMP(timezone=True), default=timenow)
+    register_at = mapped_column(TIMESTAMP, default=timenow)

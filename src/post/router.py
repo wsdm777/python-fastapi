@@ -27,7 +27,7 @@ async def postPost(
 
 
 @router.get("/{id}")
-async def get_user_by_id(id: int, session: AsyncSession = Depends(get_async_session)):
+async def get_post_by_id(id: int, session: AsyncSession = Depends(get_async_session)):
     stmt = select(Post).where(Post.id == id)
     result = await session.execute(stmt)
     result = result.scalars().one()

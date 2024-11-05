@@ -1,14 +1,9 @@
-from datetime import UTC, datetime
 from sqlalchemy import TIMESTAMP, ForeignKey, Integer, String
 from sqlalchemy.orm import declarative_base, Mapped, mapped_column
-from src.auth.models import User
+from src.auth.models import User, timenow
 
 
 Base = declarative_base()
-
-
-def timenow():
-    return datetime.now(UTC).replace(tzinfo=None)
 
 
 class Post(Base):
@@ -19,4 +14,4 @@ class Post(Base):
     )
     topic: Mapped[str] = mapped_column(String, nullable=False)
     content = mapped_column(String, nullable=True)
-    created_at = mapped_column(TIMESTAMP(timezone=True), default=timenow)
+    created_at = mapped_column(TIMESTAMP, default=timenow)

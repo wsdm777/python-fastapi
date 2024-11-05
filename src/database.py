@@ -22,12 +22,3 @@ async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
 
 async def get_user_db(session: AsyncSession = Depends(get_async_session)):
     yield SQLAlchemyUserDatabase(session, User)
-
-
-async def get_post_by_id(
-    postid: int, session: AsyncSession = Depends(get_async_session)
-):
-    stmt = select(Post).where(Post.id == postid)
-    result = await session.execute(stmt)
-    post = result.scalars().one()
-    return post
