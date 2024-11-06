@@ -5,9 +5,7 @@ from src.database import get_user_db
 from src.config import SECRET
 
 
-class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
-    reset_password_token_secret = SECRET
-    verification_token_secret = SECRET
+class UserManager(IntegerIDMixin, BaseUserManager[User, int]): ...
 
 
 async def get_user_manager(user_db=Depends(get_user_db)):

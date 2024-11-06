@@ -15,18 +15,17 @@ class Role(Base):
     __tablename__ = "role"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
-    permiss: Mapped[str] = mapped_column(String)
-    descr: Mapped[str] = mapped_column(String)
 
 
 class User(SQLAlchemyBaseUserTable[int], Base):
     __tablename__ = "user"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    email: Mapped[str] = mapped_column(String, nullable=False)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    role_id: Mapped[int] = mapped_column(Integer, ForeignKey(Role.id))
+    email: Mapped[str] = mapped_column(String, nullable=False, unique=True)
     hashed_password: Mapped[str] = mapped_column(String, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_superuser: Mapped[bool] = mapped_column(Boolean, default=False)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
-    name: Mapped[str] = mapped_column(String, nullable=False)
-    role_id: Mapped[int] = mapped_column(Integer, ForeignKey(Role.id))
-    register_at = mapped_column(TIMESTAMP, default=timenow)
+    joined_at = mapped_column(TIMESTAMP, default=timenow)
+    birthday = mapped_column(TIMESTAMP, default=timenow)

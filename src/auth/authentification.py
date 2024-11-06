@@ -9,7 +9,7 @@ from src.auth.models import User
 from src.config import SECRET
 
 
-cookie_transport = CookieTransport(cookie_name="ktoto", cookie_max_age=3600)
+cookie_transport = CookieTransport(cookie_name="defaultcook", cookie_max_age=3600)
 
 
 def get_jwt_strategy() -> JWTStrategy:
