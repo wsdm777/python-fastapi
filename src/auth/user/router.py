@@ -40,6 +40,6 @@ async def getSuperUser(
     user_id: int,
     session: AsyncSession = Depends(get_async_session),
 ):
-    stmt = update(User).where(User.id == user_id).values("is_superuser" == True)
+    stmt = update(User).where(User.id == user_id).values(is_superuser=True)
     await session.execute(stmt)
-    await session.commit
+    await session.commit()
