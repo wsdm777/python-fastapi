@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 from fastapi_users import schemas
 from pydantic import EmailStr
@@ -8,9 +9,9 @@ class UserRead(schemas.BaseUser[int]):
     name: str
     role_id: int
     email: EmailStr
-    is_active: bool = True
-    is_superuser: bool = False
-    is_verified: bool = False
+    is_vacation: bool
+    joined_at: datetime
+    last_bonus_payment: datetime | None
 
 
 class UserCreate(schemas.BaseUserCreate):

@@ -1,11 +1,11 @@
 from typing import Annotated
 from fastapi import APIRouter, Depends
-from sqlalchemy import select
+from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession
 from src.database import get_async_session
 from src.auth.authentification import fastapi_users
-from src.auth.models import User
-from src.auth.schemas import UserRead
-from sqlalchemy.ext.asyncio import AsyncSession
+from src.auth.user.models import User
+from src.auth.user.schemas import UserRead
 
 
 router = APIRouter(prefix="/user", tags=["user"])
@@ -32,3 +32,14 @@ async def get_user_by_id(
     result = await session.execute(stmt)
     result = result.scalars().one()
     return UserRead.model_validate(result)
+
+
+@router.patch("/getsuper/{user_id}")
+async def getSuperUser(
+    user: Annotated[User, Depends(current_super_user)],
+    user_id: int,
+    session: AsyncSession = Depends(get_async_session),
+):
+    stmt = update(User).where(User.id == user_id).values("is_superuser" == True)
+    await session.execute(stmt)
+    await session.commit

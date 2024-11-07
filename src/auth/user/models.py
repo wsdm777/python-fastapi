@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTable
-from sqlalchemy import TIMESTAMP, Boolean, ForeignKey, Integer, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import declarative_base, Mapped, mapped_column
 
 
@@ -24,8 +24,10 @@ class User(SQLAlchemyBaseUserTable[int], Base):
     role_id: Mapped[int] = mapped_column(Integer, ForeignKey(Role.id))
     email: Mapped[str] = mapped_column(String, nullable=False, unique=True)
     hashed_password: Mapped[str] = mapped_column(String, nullable=False)
+    is_vacation: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_superuser: Mapped[bool] = mapped_column(Boolean, default=False)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
-    joined_at = mapped_column(TIMESTAMP, default=timenow)
-    birthday = mapped_column(TIMESTAMP, default=timenow)
+    joined_at = mapped_column(DateTime, default=timenow)
+    birthday = mapped_column(DateTime, default=timenow)
+    last_bonus_payment = mapped_column(DateTime)

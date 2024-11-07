@@ -1,6 +1,6 @@
 from sqlalchemy import TIMESTAMP, ForeignKey, Integer, String
 from sqlalchemy.orm import declarative_base, Mapped, mapped_column
-from src.auth.models import User, timenow
+from src.auth.user.models import User, timenow
 
 
 Base = declarative_base()

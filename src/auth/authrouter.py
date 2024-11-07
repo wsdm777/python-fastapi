@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends
 from src.auth.authentification import fastapi_users
-from fastapi.security import HTTPBasic
-from src.auth.schemas import UserCreate, UserRead
+from src.auth.user.schemas import UserCreate, UserRead
+from src.auth.user.router import current_user
 
-security = HTTPBasic()
-router = APIRouter(prefix="/auth", tags=["auth"], dependencies=[Depends(security)])
+
+router = APIRouter(prefix="/auth", tags=["auth"], dependencies=[Depends(current_user)])
 
 router.include_router(
     fastapi_users.get_register_router(UserRead, UserCreate),

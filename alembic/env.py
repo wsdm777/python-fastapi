@@ -1,7 +1,7 @@
 from logging.config import fileConfig
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
-from src.auth.models import Base as BaseAuth
+from src.auth.user.models import Base as BaseAuth
 
 # from src.post.models import Base as BasePost
 from alembic import context
