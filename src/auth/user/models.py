@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTable
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import declarative_base, Mapped, mapped_column
 
 
@@ -29,5 +29,5 @@ class User(SQLAlchemyBaseUserTable[int], Base):
     is_superuser: Mapped[bool] = mapped_column(Boolean, default=False)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     joined_at = mapped_column(DateTime, default=timenow)
-    birthday = mapped_column(DateTime, default=timenow)
+    birthday = mapped_column(Date)
     last_bonus_payment = mapped_column(DateTime)

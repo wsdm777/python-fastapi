@@ -1,7 +1,7 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional
 from fastapi_users import schemas
-from pydantic import EmailStr
+from pydantic import EmailStr, field_validator
 
 
 class UserRead(schemas.BaseUser[int]):
@@ -23,3 +23,13 @@ class UserCreate(schemas.BaseUserCreate):
     is_active: Optional[bool] = True
     is_superuser: Optional[bool] = False
     is_verified: Optional[bool] = False
+    birthday: Optional[datetime]
+
+    @field_validator("birthday", mode="before")
+    def validate_birthday(cls, value):
+        if value is None:
+            return value
+        birthdate = datetime.strptime(value, "%Y-%m-%d").date()
+        if birthdate > date.today():
+            raise ValueError("Birthday cant be in the future")
+        return birthdate
