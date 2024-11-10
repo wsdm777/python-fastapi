@@ -4,8 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.post.schemas import PostRead
 from src.post.models import Post
 from src.database import get_async_session
-from src.auth.user.models import User
-from src.auth.user.router import current_user
+from src.user.models import User
+from src.user.router import current_user
 
 router = APIRouter(prefix="/post", tags=["post"])
 

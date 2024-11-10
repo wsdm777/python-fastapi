@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from src.auth.authentification import fastapi_users
-from src.auth.user.schemas import UserCreate, UserRead
-from src.auth.user.router import current_user
+from src.user.schemas import UserCreate, UserRead
+from src.user.router import current_user
 
 
 router = APIRouter(prefix="/auth", tags=["auth"], dependencies=[Depends(current_user)])

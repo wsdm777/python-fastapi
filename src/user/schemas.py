@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import Optional
 from fastapi_users import schemas
-from pydantic import EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, field_validator
 
 
 class UserRead(schemas.BaseUser[int]):
@@ -12,6 +12,9 @@ class UserRead(schemas.BaseUser[int]):
     is_vacation: bool
     joined_at: datetime
     last_bonus_payment: datetime | None
+
+    class Config:
+        from_attributes = True
 
 
 class UserCreate(schemas.BaseUserCreate):
@@ -33,3 +36,9 @@ class UserCreate(schemas.BaseUserCreate):
         if birthdate > date.today():
             raise ValueError("Birthday cant be in the future")
         return birthdate
+
+
+class PaginationResponse(BaseModel):
+    items: list[UserRead]
+    next_cursor: int
+    size: int
