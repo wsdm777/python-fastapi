@@ -1,6 +1,6 @@
 from fastapi import Depends
 from fastapi_users import BaseUserManager, IntegerIDMixin
-from src.user.models import User
+from src.databasemodels import User
 from src.database import get_user_db
 
 

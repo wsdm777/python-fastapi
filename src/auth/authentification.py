@@ -5,7 +5,7 @@ from fastapi_users.authentication import (
     AuthenticationBackend,
 )
 from src.auth.manager import get_user_manager
-from src.user.models import User
+from src.databasemodels import User
 from src.config import SECRET
 
 

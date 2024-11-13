@@ -7,7 +7,8 @@ from pydantic import BaseModel, EmailStr, field_validator
 class UserRead(schemas.BaseUser[int]):
     id: int
     name: str
-    role_id: int
+    surname: str
+    position_id: int
     email: EmailStr
     is_vacation: bool
     joined_at: datetime
@@ -20,7 +21,8 @@ class UserRead(schemas.BaseUser[int]):
 class UserCreate(schemas.BaseUserCreate):
     id: int
     name: str
-    role_id: int
+    surname: str
+    position_id: int
     email: EmailStr
     password: str
     is_active: Optional[bool] = True

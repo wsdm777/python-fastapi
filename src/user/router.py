@@ -1,10 +1,10 @@
 from typing import Annotated
-from fastapi import APIRouter, Depends
-from sqlalchemy import select, true, update
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import Date, delete, select, true, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.database import get_async_session
 from src.auth.authentification import fastapi_users
-from src.user.models import User
+from src.databasemodels import User
 from src.user.schemas import PaginationResponse, UserRead
 
 
@@ -29,6 +29,10 @@ async def get_user_by_id(
 ):
     stmt = select(User).where(User.id == user_id)
     result = await session.execute(stmt)
+
+    if result.rowcount == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+
     result = result.scalars().one()
     return UserRead.model_validate(result)
 
@@ -40,45 +44,36 @@ async def getSuperUser(
     session: AsyncSession = Depends(get_async_session),
 ):
     stmt = update(User).where(User.id == user_id).values(is_superuser=True)
-    await session.execute(stmt)
+    result = await session.execute(stmt)
     await session.commit()
+
+    if result.rowcount == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+
+
+@router.delete("/fire/{user_id}")
+async def fireUser(
+    user: Annotated[User, Depends(current_super_user)],
+    user_id: int,
+    session: AsyncSession = Depends(get_async_session),
+):
+    stmt = delete(User).where(User.id == user_id)
+    result = await session.execute(stmt)
+    await session.commit()
+
+    if result.rowcount == 0:
+        raise HTTPException(status_code=404, detail="User not found")
 
 
 @router.get("/all/", response_model=PaginationResponse)
 async def GetUsers(
     size: int, lc: int = None, session: AsyncSession = Depends(get_async_session)
 ):
-    query = (
-        select(
-            User.id,
-            User.name,
-            User.role_id,
-            User.is_superuser,
-            User.email,
-            User.is_vacation,
-            User.joined_at,
-            User.last_bonus_payment,
-        )
-        .order_by(User.id)
-        .limit(size)
-    )
+    query = select(User).order_by(User.id).limit(size)
     if lc:
         query = query.filter(User.id > lc)
     results = await session.execute(query)
     results = results.all()
-    users = [
-        UserRead(
-            id=row[0],
-            name=row[1],
-            role_id=row[2],
-            is_superuser=row[3],
-            email=row[4],
-            is_vacation=row[5],
-            joined_at=row[6],
-            last_bonus_payment=row[7],
-        )
-        for row in results
-    ]
+    users = [UserRead.model_validate(user) for user in users]
     last_id = users[-1].id if users else None
-
     return PaginationResponse(items=users, next_cursor=last_id, size=size)

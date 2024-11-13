@@ -1,9 +1,7 @@
 from logging.config import fileConfig
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
-from src.user.models import Base as BaseAuth
-
-# from src.post.models import Base as BasePost
+from src.databasemodels import Base
 from alembic import context
 from src.config import DB_HOST, DB_PORT, DB_USER, DB_NAME, DB_PASS
 
@@ -20,7 +18,8 @@ config.set_section_option(section, "DB_PASS", DB_PASS)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
-target_metadata = [BaseAuth.metadata]
+
+target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
