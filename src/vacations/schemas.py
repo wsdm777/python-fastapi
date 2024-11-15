@@ -1,5 +1,6 @@
 from datetime import datetime
-from pydantic import BaseModel, field_validator, model_validator
+from typing import Optional
+from pydantic import BaseModel, model_validator
 
 
 class VacationRead(BaseModel):
@@ -17,7 +18,7 @@ class VacationCreate(BaseModel):
     receiver_id: int
     start_date: datetime
     end_date: datetime
-    desciption: str | None
+    desciption: Optional[str]
 
     @model_validator(mode="before")
     def check_date(cls, values):

@@ -1,8 +1,7 @@
 from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
-from httpx import delete
-from sqlalchemy import insert, update, values
+from sqlalchemy import delete, insert, update
 
 from src.section.schemas import SectionCreate
 from src.databasemodels import Section, User
@@ -19,7 +18,7 @@ async def create_new_section(
     data: SectionCreate,
     session: AsyncSession = Depends(get_async_session),
 ):
-    stmt = insert(Section.name, Section.head_id).values(data)
+    stmt = insert(Section).values(data.model_dump())
     await session.execute(stmt)
     await session.commit()
     return JSONResponse(content={"message": "section created"}, status_code=201)

@@ -2,11 +2,10 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from httpx import delete
-from sqlalchemy import insert, update, values
+from sqlalchemy import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.section.schemas import SectionCreate
-from src.databasemodels import Section, User, Vacation
+from src.databasemodels import User, Vacation
 from src.user.router import current_super_user
 from src.database import get_async_session
 from src.vacations.schemas import VacationCreate
@@ -20,13 +19,7 @@ async def create_new_vacation(
     data: VacationCreate,
     session: AsyncSession = Depends(get_async_session),
 ):
-    stmt = insert(
-        Vacation.giver_id,
-        Vacation.receiver_id,
-        Vacation.start_date,
-        Vacation.end_date,
-        Vacation.desciption,
-    ).values(data)
+    stmt = insert(Vacation).values(data.model_dump())
     await session.execute(stmt)
     await session.commit()
     return JSONResponse(content={"message": "vacation created"}, status_code=201)

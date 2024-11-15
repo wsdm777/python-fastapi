@@ -43,6 +43,24 @@ class Position(Base):
     user = relationship("User", back_populates="position")
 
 
+class Vacation(Base):
+    __tablename__ = "vacation"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    giver_id: Mapped[int] = mapped_column(Integer, ForeignKey("user.id"))
+    receiver_id: Mapped[int] = mapped_column(Integer, ForeignKey("user.id"))
+    start_date: Mapped[Date] = mapped_column(Date, default=date.today)
+    end_date: Mapped[Date] = mapped_column(Date)
+    description: Mapped[str] = mapped_column(String)
+
+    given = relationship(
+        "User", back_populates="given_vacations", foreign_keys=[giver_id]
+    )
+
+    receiver = relationship(
+        "User", back_populates="receiver_vacations", foreign_keys=[receiver_id]
+    )
+
+
 class User(SQLAlchemyBaseUserTable[int], Base):
     __tablename__ = "user"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -62,35 +80,23 @@ class User(SQLAlchemyBaseUserTable[int], Base):
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     joined_at: Mapped[Date] = mapped_column(Date, default=date.today)
     birthday: Mapped[Date] = mapped_column(Date)
-    last_bonus_payment: Mapped[Date] = mapped_column(Date)
+    last_bonus_payment: Mapped[Date] = mapped_column(Date, nullable=True)
 
     position = relationship("Position", back_populates="user")
 
     section_headed = relationship(
-        "Section", back_populates="head", foreign_keys=[Section.head_id]
+        "Section", back_populates="head", foreign_keys=[Section.head_id], lazy="select"
     )
 
     given_vacations = relationship(
-        "Vacation", back_populates="given", foreign_keys=["vacations.giver_id"]
+        "Vacation",
+        back_populates="given",
+        foreign_keys=[Vacation.giver_id],
+        lazy="select",
     )
     receiver_vacations = relationship(
-        "Vacation", back_populates="receiver", foreign_keys=["vacations.receiver_id"]
-    )
-
-
-class Vacation(Base):
-    __tablename__ = "vacation"
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    giver_id: Mapped[int] = mapped_column(Integer, ForeignKey(User.id))
-    receiver_id: Mapped[int] = mapped_column(Integer, ForeignKey(User.id))
-    start_date: Mapped[Date] = mapped_column(Date, default=date.today)
-    end_date: Mapped[Date] = mapped_column(Date)
-    desciption: Mapped[str] = mapped_column(String)
-
-    given = relationship(
-        "Vacation", back_populates="given_vacations", foreign_keys=[giver_id]
-    )
-
-    receiver = relationship(
-        "Vacation", back_populates="receiver_vacations", foreign_keys=[receiver_id]
+        "Vacation",
+        back_populates="receiver",
+        foreign_keys=[Vacation.receiver_id],
+        lazy="select",
     )

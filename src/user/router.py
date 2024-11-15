@@ -1,6 +1,7 @@
 from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import Date, delete, select, true, update
+from fastapi.responses import JSONResponse
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.database import get_async_session
 from src.auth.authentification import fastapi_users
@@ -77,3 +78,19 @@ async def GetUsers(
     users = [UserRead.model_validate(user) for user in users]
     last_id = users[-1].id if users else None
     return PaginationResponse(items=users, next_cursor=last_id, size=size)
+
+
+@router.patch("/pos/{user_id}/{position_id}")
+async def update_position(
+    user: Annotated[User, Depends(current_super_user)],
+    user_id: int,
+    position_id: int,
+    session: AsyncSession = Depends(get_async_session),
+):
+    stmt = update(User).where(User.id == user_id).values(position_id=position_id)
+    result = await session.execute(stmt)
+    await session.commit()
+
+    if result.rowcount == 0:
+        raise HTTPException(status_code=404, detail="user not found")
+    return JSONResponse(content={"message": "user update"}, status_code=200)

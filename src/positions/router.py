@@ -20,7 +20,7 @@ async def create_new_position(
     data: PositionCreate,
     session: AsyncSession = Depends(get_async_session),
 ):
-    stmt = insert(Position.name, Position.section_id, Position.name).values(data)
+    stmt = insert(Position).values(data.model_dump())
     await session.execute(stmt)
     await session.commit()
     return JSONResponse(content={"message": "position created"}, status_code=201)
