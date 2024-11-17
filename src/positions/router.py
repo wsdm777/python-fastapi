@@ -1,13 +1,16 @@
-from typing import Annotated
+from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
-from httpx import delete
-from sqlalchemy import insert, update, values
+from sqlalchemy import insert, select, update, delete
 
-from src.positions.schemas import PositionCreate
+from src.positions.schemas import (
+    PositionCreate,
+    PositionPaginationResponse,
+    PositionRead,
+)
 from src.section.schemas import SectionCreate
 from src.databasemodels import Position, Section, User
-from src.user.router import current_super_user
+from src.user.router import current_super_user, current_user
 from src.database import get_async_session
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,7 +30,7 @@ async def create_new_position(
 
 
 @router.delete("/delete/{position_id}")
-async def create_new_position(
+async def delete_position(
     user: Annotated[User, Depends(current_super_user)],
     position_id: int,
     session: AsyncSession = Depends(get_async_session),
@@ -47,10 +50,72 @@ async def update_position(
     section_id: int,
     session: AsyncSession = Depends(get_async_session),
 ):
-    stmt = update(Position).where(Position.id == position_id).values(id=section_id)
+    stmt = (
+        update(Position).where(Position.id == position_id).values(section_id=section_id)
+    )
     result = await session.execute(stmt)
     await session.commit()
 
     if result.rowcount == 0:
         raise HTTPException(status_code=404, detail="position not found")
     return JSONResponse(content={"message": "position update"}, status_code=200)
+
+
+@router.get("/{position_id}", response_model=PositionRead)
+async def get_position_by_id(
+    user: Annotated[User, Depends(current_user)],
+    position_id: int,
+    session: AsyncSession = Depends(get_async_session),
+):
+    stmt = select(Position).where(Position.id == position_id)
+    result = await session.execute(stmt)
+
+    result = result.scalars().one_or_none()
+
+    if result is None:
+        raise HTTPException(status_code=404, detail="Position not found")
+
+    return PositionRead.model_validate(result)
+
+
+@router.get("/all/", response_model=PositionPaginationResponse)
+async def get_position(
+    size: int,
+    lc: Optional[int] = None,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    stmt = select(Position).order_by(Position.id).limit(size)
+    if lc:
+        stmt = stmt.filter(Position.id > lc)
+
+    results = await session.execute(stmt)
+    results = results.scalars().all()
+    positions = [PositionRead.model_validate(position) for position in results]
+    last_id = positions[-1].id if positions else None
+
+    return PositionPaginationResponse(items=positions, next_cursor=last_id, size=size)
+
+
+@router.get("/all/to/{section}", response_model=PositionPaginationResponse)
+async def get_vacation_to_id(
+    size: int,
+    section_id: int,
+    lc: Optional[int] = None,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    stmt = (
+        select(Position)
+        .order_by(Position.id)
+        .limit(size)
+        .filter(Position.section_id == section_id)
+    )
+    if lc:
+        stmt = stmt.filter(Position.id > lc)
+    results = await session.execute(stmt)
+    results = results.scalars().all()
+    vacations = [PositionRead.model_validate(vacation) for vacation in results]
+    last_id = vacations[-1].id if vacations else None
+
+    return PositionPaginationResponse(items=vacations, next_cursor=last_id, size=size)

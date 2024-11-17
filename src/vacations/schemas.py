@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date
 from typing import Optional
 from pydantic import BaseModel, model_validator
 
@@ -7,18 +7,20 @@ class VacationRead(BaseModel):
     id: int
     giver_id: int
     receiver_id: int
-    start_date: datetime
-    end_date: datetime
-    desciption: str | None
+    start_date: date
+    end_date: date
+    description: str | None
+
+    class Config:
+        from_attributes = True
 
 
 class VacationCreate(BaseModel):
-    id: int
     giver_id: int
     receiver_id: int
-    start_date: datetime
-    end_date: datetime
-    desciption: Optional[str]
+    start_date: date
+    end_date: date
+    description: Optional[str]
 
     @model_validator(mode="before")
     def check_date(cls, values):
@@ -29,3 +31,9 @@ class VacationCreate(BaseModel):
             raise ValueError("the start date must be earlier than the end date")
 
         return values
+
+
+class VacationPaginationResponse(BaseModel):
+    items: list[VacationRead]
+    next_cursor: int | None
+    size: int

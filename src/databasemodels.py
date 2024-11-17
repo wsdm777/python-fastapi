@@ -1,6 +1,6 @@
 from datetime import date
 from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTable
-from sqlalchemy import Boolean, Date, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Date, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import declarative_base, Mapped, mapped_column, relationship
 
 
@@ -46,8 +46,24 @@ class Position(Base):
 class Vacation(Base):
     __tablename__ = "vacation"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    giver_id: Mapped[int] = mapped_column(Integer, ForeignKey("user.id"))
-    receiver_id: Mapped[int] = mapped_column(Integer, ForeignKey("user.id"))
+    giver_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey(
+            "user.id",
+            use_alter=True,
+            name="fk_vacation_giv_user",
+            ondelete="SET NULL",
+        ),
+    )
+    receiver_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey(
+            "user.id",
+            use_alter=True,
+            name="fk_vacation_rev_user",
+            ondelete="SET NULL",
+        ),
+    )
     start_date: Mapped[Date] = mapped_column(Date, default=date.today)
     end_date: Mapped[Date] = mapped_column(Date)
     description: Mapped[str] = mapped_column(String)
@@ -58,6 +74,12 @@ class Vacation(Base):
 
     receiver = relationship(
         "User", back_populates="receiver_vacations", foreign_keys=[receiver_id]
+    )
+
+    __table_args__ = (
+        Index("ix_vacation_receiver_id", receiver_id),
+        Index("ix_vacation_giver_id", giver_id),
+        Index("ix_vacation_dates", start_date, end_date),
     )
 
 
@@ -100,3 +122,4 @@ class User(SQLAlchemyBaseUserTable[int], Base):
         foreign_keys=[Vacation.receiver_id],
         lazy="select",
     )
+    __table_args__ = (Index("ix_user_position_id", position_id),)
