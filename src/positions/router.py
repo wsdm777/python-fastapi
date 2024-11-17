@@ -8,8 +8,7 @@ from src.positions.schemas import (
     PositionPaginationResponse,
     PositionRead,
 )
-from src.section.schemas import SectionCreate
-from src.databasemodels import Position, Section, User
+from src.databasemodels import Position, User
 from src.user.router import current_super_user, current_user
 from src.database import get_async_session
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -98,7 +97,7 @@ async def get_position(
 
 
 @router.get("/all/to/{section}", response_model=PositionPaginationResponse)
-async def get_vacation_to_id(
+async def get_vacation_to_section(
     size: int,
     section_id: int,
     lc: Optional[int] = None,
