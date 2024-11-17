@@ -94,7 +94,7 @@ class UserInfo(BaseModel):
     id: int
     name: str
     surname: str
-    position_id: int | None
+    position_name: str
     email: EmailStr
     joined_at: date
     birthday: date

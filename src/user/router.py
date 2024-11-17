@@ -6,7 +6,7 @@ from sqlalchemy import and_, case, delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.database import get_async_session
 from src.auth.authentification import fastapi_users
-from src.databasemodels import User, Vacation
+from src.databasemodels import Position, User, Vacation
 from src.user.schemas import (
     UserInfo,
     UserNotOnVacation,
@@ -41,6 +41,7 @@ async def get_user_by_id(
     stmt = (
         select(
             User,
+            Position.name,
             func.bool_or(
                 case(
                     (
@@ -55,8 +56,9 @@ async def get_user_by_id(
             ).label("is_on_vacation"),
         )
         .outerjoin(Vacation, User.id == Vacation.receiver_id)
+        .outerjoin(Position, User.position_id == Position.id)
         .filter(User.id == user_id)
-        .group_by(User)
+        .group_by(User, Position.name)
     )
 
     result = await session.execute(stmt)
@@ -64,7 +66,7 @@ async def get_user_by_id(
     if result is None:
         raise HTTPException(status_code=404, detail="User not found")
 
-    user, on_vacation = result
+    user, position_name, on_vacation = result
     return UserInfo(
         id=user.id,
         name=user.name,
@@ -72,7 +74,7 @@ async def get_user_by_id(
         email=user.email,
         joined_at=user.joined_at,
         birthday=user.birthday,
-        position_id=user.position_id,
+        position_name=position_name,
         is_on_vacation=on_vacation,
     )
 

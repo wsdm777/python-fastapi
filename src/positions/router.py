@@ -97,7 +97,7 @@ async def get_position(
 
 
 @router.get("/all/to/{section}", response_model=PositionPaginationResponse)
-async def get_vacation_to_section(
+async def get_position_to_section(
     size: int,
     section_id: int,
     lc: Optional[int] = None,
