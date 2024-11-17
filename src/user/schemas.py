@@ -1,5 +1,4 @@
 from datetime import date, datetime
-from tracemalloc import start
 from typing import Optional
 from fastapi_users import schemas
 from pydantic import BaseModel, EmailStr, field_validator

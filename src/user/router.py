@@ -2,7 +2,7 @@ from datetime import date
 from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
-from sqlalchemy import and_, case, delete, func, or_, select, update
+from sqlalchemy import and_, case, delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.database import get_async_session
 from src.auth.authentification import fastapi_users
