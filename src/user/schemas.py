@@ -95,7 +95,13 @@ class UserInfo(BaseModel):
     name: str
     surname: str
     position_name: str
+    section_name: str
     email: EmailStr
     joined_at: date
     birthday: date
     is_on_vacation: bool
+    last_bonus_payment: date | None
+
+
+class idResponse(BaseModel):
+    id: int

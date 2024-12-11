@@ -6,7 +6,7 @@ from sqlalchemy import and_, case, delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.database import get_async_session
 from src.auth.authentification import fastapi_users
-from src.databasemodels import Position, User, Vacation
+from src.databasemodels import Position, Section, User, Vacation
 from src.user.schemas import (
     UserInfo,
     UserNotOnVacation,
@@ -17,6 +17,7 @@ from src.user.schemas import (
     UserPaginationResponse,
     UserRead,
     UserResponse,
+    idResponse,
 )
 
 
@@ -27,14 +28,14 @@ current_user = fastapi_users.current_user()
 current_super_user = fastapi_users.current_user(superuser=True)
 
 
-@router.get("/me", response_model=UserRead)
-def get_me(user: User = Depends(current_user)):
-    return UserRead.model_validate(user)
+@router.get("/me", response_model=idResponse)
+def get_my_id(user: User = Depends(current_user)):
+    return {"id": user.id}
 
 
 @router.get("/{user_id}", response_model=UserInfo)
 async def get_user_by_id(
-    user: Annotated[User, Depends(current_super_user)],
+    user: Annotated[User, Depends(current_user)],
     user_id: int,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -42,6 +43,7 @@ async def get_user_by_id(
         select(
             User,
             Position.name,
+            Section.name,
             func.bool_or(
                 case(
                     (
@@ -57,8 +59,9 @@ async def get_user_by_id(
         )
         .outerjoin(Vacation, User.id == Vacation.receiver_id)
         .outerjoin(Position, User.position_id == Position.id)
+        .outerjoin(Section, Position.section_id == Section.id)
         .filter(User.id == user_id)
-        .group_by(User, Position.name)
+        .group_by(User, Position.name, Section.name)
     )
 
     result = await session.execute(stmt)
@@ -66,7 +69,7 @@ async def get_user_by_id(
     if result is None:
         raise HTTPException(status_code=404, detail="User not found")
 
-    user, position_name, on_vacation = result
+    user, position_name, section_name, on_vacation = result
     return UserInfo(
         id=user.id,
         name=user.name,
@@ -75,7 +78,9 @@ async def get_user_by_id(
         joined_at=user.joined_at,
         birthday=user.birthday,
         position_name=position_name,
+        section_name=section_name,
         is_on_vacation=on_vacation,
+        last_bonus_payment=user.last_bonus_payment,
     )
 
 
@@ -270,6 +275,3 @@ async def update_position(
         raise HTTPException(status_code=404, detail="User not found")
 
     return JSONResponse(content={"Message": "User update"}, status_code=200)
-
-
-# TODO users not at vacation
