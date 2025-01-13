@@ -1,125 +1,116 @@
 from datetime import date
-from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTable
-from sqlalchemy import Boolean, Date, ForeignKey, Index, Integer, String
-from sqlalchemy.orm import declarative_base, Mapped, mapped_column, relationship
+from sqlalchemy import Date, ForeignKey, Index
+from sqlalchemy.orm import Mapped, mapped_column, relationship, DeclarativeBase
 
 
-Base = declarative_base()
-
-
-class Section(Base):
-    __tablename__ = "section"
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(String, nullable=False)
-    head_id: Mapped[int] = mapped_column(
-        Integer,
-        ForeignKey(
-            "user.id", use_alter=True, name="fk_section_user", ondelete="SET NULL"
-        ),
-        nullable=True,
-    )
-
-    head = relationship("User", back_populates="section_headed", foreign_keys=[head_id])
-
-    position = relationship("Position", back_populates="section")
-
-
-class Position(Base):
-    __tablename__ = "position"
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    section_id: Mapped[int] = mapped_column(
-        Integer,
-        ForeignKey(
-            "section.id",
-            use_alter=True,
-            name="fk_position_section",
-            ondelete="SET NULL",
-        ),
-        nullable=True,
-    )
-    name: Mapped[str] = mapped_column(String, nullable=False)
-
-    section = relationship("Section", back_populates="position")
-    user = relationship("User", back_populates="position")
+class Base(DeclarativeBase): ...
 
 
 class Vacation(Base):
     __tablename__ = "vacation"
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    giver_id: Mapped[int] = mapped_column(
-        Integer,
+    id: Mapped[int] = mapped_column(primary_key=True)
+    giver_email: Mapped[str] = mapped_column(
         ForeignKey(
-            "user.id",
+            "user.email",
             use_alter=True,
             name="fk_vacation_giv_user",
             ondelete="SET NULL",
         ),
+        nullable=True,
     )
-    receiver_id: Mapped[int] = mapped_column(
-        Integer,
+    receiver_email: Mapped[str] = mapped_column(
         ForeignKey(
-            "user.id",
+            "user.email",
             use_alter=True,
             name="fk_vacation_rev_user",
-            ondelete="SET NULL",
+            ondelete="CASCADE",
         ),
     )
-    start_date: Mapped[Date] = mapped_column(Date, default=date.today)
-    end_date: Mapped[Date] = mapped_column(Date)
-    description: Mapped[str] = mapped_column(String)
+    start_date = mapped_column(Date, default=date.today)
+    end_date = mapped_column(Date)
+    created_date = mapped_column(Date, default=date.today)
+    description: Mapped[str] = mapped_column(nullable=True)
 
-    given = relationship(
-        "User", back_populates="given_vacations", foreign_keys=[giver_id]
+    giver = relationship(
+        "User", back_populates="given_vacations", foreign_keys=[giver_email]
     )
 
     receiver = relationship(
-        "User", back_populates="receiver_vacations", foreign_keys=[receiver_id]
+        "User", back_populates="receiver_vacations", foreign_keys=[receiver_email]
     )
 
     __table_args__ = (
-        Index("ix_vacation_receiver_id", receiver_id),
-        Index("ix_vacation_giver_id", giver_id),
+        Index("ix_vacation_receiver_id", receiver_email),
+        Index("ix_vacation_giver_id", giver_email),
         Index("ix_vacation_dates", start_date, end_date),
     )
 
 
-class User(SQLAlchemyBaseUserTable[int], Base):
-    __tablename__ = "user"
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(String, nullable=False)
-    surname: Mapped[str] = mapped_column(String, nullable=False)
-    position_id: Mapped[int] = mapped_column(
-        Integer,
+class Section(Base):
+    __tablename__ = "section"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(nullable=False, index=True, unique=True)
+    head_email: Mapped[str] = mapped_column(
         ForeignKey(
-            "position.id", use_alter=True, name="fk_user_position", ondelete="SET NULL"
+            "user.email", use_alter=True, name="fk_section_user", ondelete="SET NULL"
         ),
         nullable=True,
     )
-    email: Mapped[str] = mapped_column(String, nullable=False, unique=True)
-    hashed_password: Mapped[str] = mapped_column(String, nullable=False)
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    is_superuser: Mapped[bool] = mapped_column(Boolean, default=False)
-    is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
-    joined_at: Mapped[Date] = mapped_column(Date, default=date.today)
-    birthday: Mapped[Date] = mapped_column(Date)
-    last_bonus_payment: Mapped[Date] = mapped_column(Date, nullable=True)
+
+    head = relationship(
+        "User", back_populates="section_headed", foreign_keys=[head_email]
+    )
+    __table_args__ = (Index("ix_section_head_email", head_email),)
+
+
+class Position(Base):
+    __tablename__ = "position"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    section_name: Mapped[str] = mapped_column(
+        ForeignKey(
+            "section.name",
+            use_alter=True,
+            name="fk_position_section",
+            ondelete="CASCADE",
+        ),
+        nullable=True,
+    )
+    name: Mapped[str] = mapped_column(nullable=False, unique=True, index=True)
+
+    user = relationship("User", back_populates="position")
+    __table_args__ = (Index("ix_position_section_name", section_name),)
+
+
+class User(Base):
+    __tablename__ = "user"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(nullable=False)
+    surname: Mapped[str] = mapped_column(nullable=False)
+    position_name: Mapped[str] = mapped_column(
+        ForeignKey(
+            "position.name",
+            use_alter=True,
+            name="fk_user_position",
+            ondelete="SET NULL",
+        ),
+        nullable=True,
+    )
+    email: Mapped[str] = mapped_column(nullable=False, unique=True)
+    hashed_password: Mapped[str] = mapped_column(nullable=False)
+    is_superuser: Mapped[bool] = mapped_column(default=False)
+    joined_at = mapped_column(Date, default=date.today)
+    birthday = mapped_column(Date)
 
     position = relationship("Position", back_populates="user")
 
-    section_headed = relationship(
-        "Section", back_populates="head", foreign_keys=[Section.head_id], lazy="select"
-    )
+    section_headed = relationship("Section", back_populates="head")
 
     given_vacations = relationship(
-        "Vacation",
-        back_populates="given",
-        foreign_keys=[Vacation.giver_id],
-        lazy="select",
+        "Vacation", back_populates="giver", foreign_keys=[Vacation.giver_email]
     )
     receiver_vacations = relationship(
         "Vacation",
         back_populates="receiver",
-        foreign_keys=[Vacation.receiver_id],
-        lazy="select",
+        foreign_keys="Vacation.receiver_email",
     )
-    __table_args__ = (Index("ix_user_position_id", position_id),)
+    __table_args__ = (Index("ix_user_position_name", position_name),)
