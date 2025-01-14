@@ -20,10 +20,9 @@ class UserRead(schemas.BaseUser[int]):
 
 
 class UserCreate(schemas.BaseUserCreate):
-    id: int
     name: str
     surname: str
-    position_id: int
+    position_name: str | None
     email: EmailStr
     password: str
     is_active: Optional[bool] = True
@@ -35,7 +34,10 @@ class UserCreate(schemas.BaseUserCreate):
     def validate_birthday(cls, value):
         if value is None:
             return value
-        birthdate = datetime.strptime(value, "%Y-%m-%d").date()
+        if isinstance(value, date):
+            birthdate = value
+        elif isinstance(value, str):
+            birthdate = datetime.strptime(value, "%Y-%m-%d").date()
         if birthdate > date.today():
             raise ValueError("Birthday cant be in the future")
         return value
