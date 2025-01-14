@@ -2,8 +2,11 @@ from datetime import date
 from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
+from pydantic import EmailStr
 from sqlalchemy import and_, case, delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+from src.utils.logger import logger
 from src.database import get_async_session
 from src.auth.authentification import fastapi_users
 from src.databasemodels import Position, Section, User, Vacation
@@ -15,9 +18,7 @@ from src.user.schemas import (
     UserPaginationAllNotVacationResponse,
     UserPaginationAllVacationResponse,
     UserPaginationResponse,
-    UserRead,
     UserResponse,
-    idResponse,
 )
 
 
@@ -28,48 +29,31 @@ current_user = fastapi_users.current_user()
 current_super_user = fastapi_users.current_user(superuser=True)
 
 
-@router.get("/me", response_model=idResponse)
-def get_my_id(user: User = Depends(current_user)):
-    return {"id": user.id}
-
-
-@router.get("/{user_id}", response_model=UserInfo)
-async def get_user_by_id(
+@router.get("/{user_email}", response_model=UserInfo)
+async def get_user_by_email(
     user: Annotated[User, Depends(current_user)],
-    user_id: int,
+    user_email: EmailStr,
     session: AsyncSession = Depends(get_async_session),
 ):
-    stmt = (
-        select(
-            User,
-            Position.name,
-            Section.name,
-            func.bool_or(
-                case(
-                    (
-                        and_(
-                            Vacation.start_date <= date.today(),
-                            Vacation.end_date >= date.today(),
-                        ),
-                        True,
-                    ),
-                    else_=False,
-                )
-            ).label("is_on_vacation"),
-        )
-        .outerjoin(Vacation, User.id == Vacation.receiver_id)
-        .outerjoin(Position, User.position_id == Position.id)
-        .outerjoin(Section, Position.section_id == Section.id)
-        .filter(User.id == user_id)
-        .group_by(User, Position.name, Section.name)
+    query = (
+        select(User, Position.name, Section.name)
+        .outerjoin(Position, User.position_name == Position.name)
+        .outerjoin(Section, Position.section_name == Section.name)
+        .options(selectinload(User.receiver_vacations))
+        .filter(User.email == user_email)
     )
 
-    result = await session.execute(stmt)
-    result = result.one_or_none()
+    result = await session.execute(query)
+    result = result.unique().one_or_none()
     if result is None:
+        logger.error(f"User {user_email} not found")
         raise HTTPException(status_code=404, detail="User not found")
-
-    user, position_name, section_name, on_vacation = result
+    logger.info(f"Selected info user {user_email}")
+    user, position_name, section_name = result
+    on_vacation = False
+    for vacation in user.receiver_vacations:
+        if vacation.start_date <= date.today() <= vacation.end_date:
+            on_vacation = True
     return UserInfo(
         id=user.id,
         name=user.name,
@@ -80,17 +64,17 @@ async def get_user_by_id(
         position_name=position_name,
         section_name=section_name,
         is_on_vacation=on_vacation,
-        last_bonus_payment=user.last_bonus_payment,
+        is_superuser=user.is_superuser,
     )
 
 
-@router.patch("/getsuper/{user_id}", response_model=UserResponse)
+@router.patch("/getsuper/{user_email}", response_model=UserResponse)
 async def get_superuser(
     user: Annotated[User, Depends(current_super_user)],
-    user_id: int,
+    user_email: EmailStr,
     session: AsyncSession = Depends(get_async_session),
 ):
-    stmt = update(User).where(User.id == user_id).values(is_superuser=True)
+    stmt = update(User).filter(User.email == user_email).values(is_superuser=True)
     result = await session.execute(stmt)
     await session.commit()
 

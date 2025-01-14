@@ -94,14 +94,13 @@ class UserInfo(BaseModel):
     id: int
     name: str
     surname: str
-    position_name: str
-    section_name: str
+    position_name: str | None
+    section_name: str | None
     email: EmailStr
     joined_at: date
     birthday: date
     is_on_vacation: bool
-    last_bonus_payment: date | None
+    is_superuser: bool
 
-
-class idResponse(BaseModel):
-    id: int
+    class ConfigDict:
+        from_attributes = True
