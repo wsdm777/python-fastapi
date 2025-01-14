@@ -1,4 +1,3 @@
-import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from src.auth.authentification import fastapi_users, auth_backend
@@ -8,14 +7,15 @@ from src.vacations.router import router as vacRouter
 from src.positions.router import router as posRouter
 from src.section.router import router as secRouter
 from src.utils.create_superuser import create_superuser
+from src.utils.logger import logger
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("Начинаю создание суперпользователя...")
+    logger.info("App is starting")
     await create_superuser()
-    print("Суперпользователь создан")
     yield
+    logger.info("App is shutting down")
 
 
 app = FastAPI(title="TestApp", lifespan=lifespan)

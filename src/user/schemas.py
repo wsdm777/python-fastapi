@@ -8,12 +8,10 @@ class UserRead(schemas.BaseUser[int]):
     id: int
     name: str
     surname: str
-    position_id: int | None
+    position_name: int | None
     email: EmailStr
     joined_at: date
     birthday: date
-
-    last_bonus_payment: date | None
 
     class Config:
         from_attributes = True
@@ -22,7 +20,7 @@ class UserRead(schemas.BaseUser[int]):
 class UserCreate(schemas.BaseUserCreate):
     name: str
     surname: str
-    position_name: str | None
+    position_name: str | None = None
     email: EmailStr
     password: str
     is_active: Optional[bool] = True
