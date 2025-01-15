@@ -86,10 +86,6 @@ class UserPaginationResponse(BaseModel):
     size: int
 
 
-class UserResponse(BaseModel):
-    Message: str
-
-
 class UserInfo(BaseModel):
     id: int
     name: str

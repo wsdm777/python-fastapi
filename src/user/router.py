@@ -18,7 +18,6 @@ from src.user.schemas import (
     UserPaginationAllNotVacationResponse,
     UserPaginationAllVacationResponse,
     UserPaginationResponse,
-    UserResponse,
 )
 
 
@@ -68,7 +67,7 @@ async def get_user_by_email(
     )
 
 
-@router.patch("/getsuper/{user_email}", response_model=UserResponse)
+@router.patch("/getsuper/{user_email}")
 async def get_superuser(
     user: Annotated[User, Depends(current_super_user)],
     user_email: EmailStr,
@@ -80,23 +79,29 @@ async def get_superuser(
 
     if result.rowcount == 0:
         raise HTTPException(status_code=404, detail="User not found")
-    return JSONResponse(content={"Message": "User upgrade"}, status_code=200)
+    logger.info(f"User {user_email} upgrade")
+    return JSONResponse(
+        content={"Message": f"User {user_email} upgrade"}, status_code=200
+    )
 
 
-@router.delete("/fire/{user_id}", response_model=UserResponse)
+@router.delete("/fire/{user_email}")
 async def fire_user(
     user: Annotated[User, Depends(current_super_user)],
-    user_id: int,
+    user_email: EmailStr,
     session: AsyncSession = Depends(get_async_session),
 ):
-    stmt = delete(User).where(User.id == user_id)
+    stmt = delete(User).filter(User.email == user_email)
     result = await session.execute(stmt)
     await session.commit()
 
     if result.rowcount == 0:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail="User {user_email} not found")
 
-    return JSONResponse(content={"Message": "User deleted"}, status_code=200)
+    logger.info(f"User {user_email} deleted")
+    return JSONResponse(
+        content={"Message": f"User {user_email} deleted"}, status_code=200
+    )
 
 
 @router.get("/all/", response_model=UserPaginationResponse)
@@ -244,7 +249,7 @@ async def get_all_vacation(
     )
 
 
-@router.patch("/pos/{user_id}/{position_id}", response_model=UserResponse)
+@router.patch("/pos/{user_id}/{position_id}")
 async def update_position(
     user: Annotated[User, Depends(current_super_user)],
     user_id: int,
