@@ -92,6 +92,10 @@ async def fire_user(
     user_email: EmailStr,
     session: AsyncSession = Depends(get_async_session),
 ):
+    if user.email == user_email:
+        logger.info(f"Attempted self-deleting {user_email}")
+        raise HTTPException(status_code=404, detail=f"You cannot delete yourself")
+
     stmt = delete(User).filter(User.email == user_email)
     result = await session.execute(stmt)
     await session.commit()

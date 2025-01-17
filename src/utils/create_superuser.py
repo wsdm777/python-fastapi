@@ -2,7 +2,9 @@ import contextlib
 from datetime import date
 from fastapi_users.exceptions import UserAlreadyExists
 from pydantic import EmailStr
+from sqlalchemy import select
 
+from src.databasemodels import User
 from src.config import SUPER_USER_PASSWORD
 from src.auth.manager import UserManager, get_user_manager
 from src.database import get_async_session, get_user_db
@@ -55,9 +57,12 @@ async def create_superuser(
         async with get_async_session_context() as session:
             async with get_user_db_context(session) as user_db:
                 async with get_user_manager_context(user_db) as user_manager:
-                    user = await create_user(
-                        user_manager=user_manager, user_create=user_create
-                    )
-                    return user
+                    query = select(User).filter(User.is_superuser == True).limit(1)
+                    result = await session.execute(query)
+                    if result.scalar() is None:
+                        user = await create_user(
+                            user_manager=user_manager, user_create=user_create
+                        )
+                        return user
     except UserAlreadyExists:
         ...
