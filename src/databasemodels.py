@@ -114,4 +114,7 @@ class User(SQLAlchemyBaseUserTable[int], Base):
         back_populates="receiver",
         foreign_keys="Vacation.receiver_email",
     )
-    __table_args__ = (Index("ix_user_position_name", position_name),)
+    __table_args__ = (
+        Index("ix_user_position_name", position_name),
+        Index("ix_user_surname_name", surname, name),
+    )

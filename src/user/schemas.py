@@ -75,14 +75,19 @@ class UserPagination(BaseModel):
     id: int
     name: str
     surname: str
-    position_id: int | None
+    position_name: str | None
     email: EmailStr
     on_vacation: bool
 
 
+class CursorInfo(BaseModel):
+    last_surname: str | None
+    last_name: str | None
+
+
 class UserPaginationResponse(BaseModel):
     items: list[UserPagination]
-    next_cursor: int | None
+    next_cursor: CursorInfo
     size: int
 
 

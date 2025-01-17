@@ -1,6 +1,6 @@
 from datetime import date
 from typing import Annotated, Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
 from pydantic import EmailStr
 from sqlalchemy import and_, case, delete, func, select, update
@@ -96,7 +96,7 @@ async def fire_user(
     await session.commit()
 
     if result.rowcount == 0:
-        raise HTTPException(status_code=404, detail="User {user_email} not found")
+        raise HTTPException(status_code=404, detail=f"User {user_email} not found")
 
     logger.info(f"User {user_email} deleted")
     return JSONResponse(
@@ -106,15 +106,22 @@ async def fire_user(
 
 @router.get("/all/", response_model=UserPaginationResponse)
 async def get_users(
-    size: int,
-    lc: Optional[int] = None,
-    position_id: Optional[int] = None,
+    desc: bool = Query(False, description="Тип сортировки"),
+    filter_surname: Optional[str] = Query(None, description="Фамилия"),
+    page_size: int = Query(10, ge=1, le=100, description="Размер страницы"),
+    last_name: Optional[str] = Query(
+        None, description="Имя последнего пользователя на предыдущей странице"
+    ),
+    last_surname: Optional[str] = Query(
+        None, description="Фамилия последнего пользователя на предыдущей странице"
+    ),
     user: User = Depends(current_user),
     session: AsyncSession = Depends(get_async_session),
 ):
-    stmt = (
+    query = (
         select(
             User,
+            Position.name,
             func.bool_or(
                 case(
                     (
@@ -128,30 +135,44 @@ async def get_users(
                 )
             ).label("is_on_vacation"),
         )
-        .outerjoin(Vacation, User.id == Vacation.receiver_id)
-        .limit(size)
-        .group_by(User)
-        .order_by(User.id)
+        .outerjoin(Vacation, User.email == Vacation.receiver_email)
+        .outerjoin(Position, User.position_name == Position.name)
+        .limit(page_size)
+        .group_by(User, Position.name)
     )
-    if lc:
-        stmt = stmt.filter(User.id > lc)
-    if position_id:
-        stmt = stmt.filter(User.position_id == position_id)
-    results = await session.execute(stmt)
+
+    if desc:
+        if last_surname and last_name:
+            query = query.filter((User.surname, User.name) > (last_surname, last_name))
+        query = query.order_by(User.surname.desc(), User.name.desc())
+    else:
+        query = query.order_by(User.surname, User.name)
+        if last_name and last_surname:
+            query = query.filter((User.surname, User.name) < (last_surname, last_name))
+
+    if filter_surname:
+        query = query.filter(User.surname.ilike(f"%{filter_surname}%"))
+
+    results = await session.execute(query)
     results = results.all()
     users = [
         UserPagination(
             id=user.id,
             name=user.name,
             surname=user.surname,
-            position_id=user.position_id,
+            position_name=position_name,
             email=user.email,
-            on_vacation=vacation,
+            on_vacation=is_on_vacation,
         )
-        for user, vacation in results
+        for user, position_name, is_on_vacation in results
     ]
-    last_id = users[-1].id if users else None
-    return UserPaginationResponse(items=users, next_cursor=last_id, size=size)
+    last_name = users[-1].name if users else None
+    last_surname = users[-1].surname if users else None
+    return UserPaginationResponse(
+        items=users,
+        next_cursor={"last_surname": last_surname, "last_name": last_name},
+        size=page_size,
+    )
 
 
 @router.get("/all/not_on_vacation", response_model=UserPaginationAllNotVacationResponse)
