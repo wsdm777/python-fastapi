@@ -88,6 +88,7 @@ class CursorInfo(BaseModel):
 class UserPaginationResponse(BaseModel):
     items: list[UserPagination]
     next_cursor: CursorInfo
+    final: bool
     size: int
 
 

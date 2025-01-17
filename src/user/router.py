@@ -1,11 +1,12 @@
 from datetime import date
+import email
 from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
 from pydantic import EmailStr
-from sqlalchemy import and_, case, delete, func, select, update
+from sqlalchemy import and_, case, delete, exists, func, select, tuple_, update
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, aliased
 from src.utils.logger import logger
 from src.database import get_async_session
 from src.auth.authentification import fastapi_users
@@ -115,12 +116,18 @@ async def get_users(
     last_surname: Optional[str] = Query(
         None, description="Фамилия последнего пользователя на предыдущей странице"
     ),
+    on_vacation_only: Optional[bool] = Query(
+        None, description="Фильтр пользователей в отпуске (True/False)"
+    ),
     user: User = Depends(current_user),
     session: AsyncSession = Depends(get_async_session),
 ):
     query = (
         select(
-            User,
+            User.id,
+            User.name,
+            User.surname,
+            User.email,
             Position.name,
             func.bool_or(
                 case(
@@ -137,136 +144,64 @@ async def get_users(
         )
         .outerjoin(Vacation, User.email == Vacation.receiver_email)
         .outerjoin(Position, User.position_name == Position.name)
-        .limit(page_size)
         .group_by(User, Position.name)
     )
 
-    if desc:
-        if last_surname and last_name:
-            query = query.filter((User.surname, User.name) > (last_surname, last_name))
-        query = query.order_by(User.surname.desc(), User.name.desc())
-    else:
-        query = query.order_by(User.surname, User.name)
-        if last_name and last_surname:
-            query = query.filter((User.surname, User.name) < (last_surname, last_name))
+    query = (
+        query.order_by(User.surname.desc(), User.name.desc())
+        if desc
+        else query.order_by(User.surname, User.name)
+    )
+
+    if last_surname and last_name:
+        cursor_filter = (
+            tuple_(User.surname, User.name) < tuple_(last_surname, last_name)
+            if desc
+            else tuple_(User.surname, User.name) > tuple_(last_surname, last_name)
+        )
+        query = query.filter(cursor_filter)
 
     if filter_surname:
         query = query.filter(User.surname.ilike(f"%{filter_surname}%"))
+
+    if on_vacation_only is not None:
+        aliasVac = aliased(Vacation)
+        vacation_filter = exists().where(
+            and_(
+                aliasVac.start_date <= date.today(),
+                aliasVac.end_date >= date.today(),
+                aliasVac.receiver_email == User.email,
+            )
+        )
+        query = query.filter(vacation_filter if on_vacation_only else ~vacation_filter)
+
+    query = query.limit(page_size + 1)
 
     results = await session.execute(query)
     results = results.all()
     users = [
         UserPagination(
-            id=user.id,
-            name=user.name,
-            surname=user.surname,
+            id=user_id,
+            name=user_name,
+            surname=user_surname,
             position_name=position_name,
-            email=user.email,
+            email=user_email,
             on_vacation=is_on_vacation,
         )
-        for user, position_name, is_on_vacation in results
+        for user_id, user_name, user_surname, user_email, position_name, is_on_vacation in results
     ]
-    last_name = users[-1].name if users else None
-    last_surname = users[-1].surname if users else None
+
+    is_final = False if len(results) > page_size else True
+
+    if not is_final:
+        last_name = users[-2].name if users else None
+        last_surname = users[-2].surname if users else None
+
     return UserPaginationResponse(
-        items=users,
+        items=users[:page_size],
         next_cursor={"last_surname": last_surname, "last_name": last_name},
+        final=is_final,
         size=page_size,
-    )
-
-
-@router.get("/all/not_on_vacation", response_model=UserPaginationAllNotVacationResponse)
-async def get_all_not_vacation(
-    size: int,
-    lc: Optional[int] = None,
-    position_id: Optional[int] = None,
-    user: User = Depends(current_user),
-    session: AsyncSession = Depends(get_async_session),
-):
-    active_users_id = (
-        select(User.id)
-        .join(Vacation, User.id == Vacation.receiver_id)
-        .filter(
-            and_(
-                Vacation.end_date > date.today(),
-                Vacation.start_date < date.today(),
-            )
-        )
-        .order_by(User.id)
-        .limit(size)
-    )
-    if lc:
-        active_users_id = active_users_id.filter(User.id > lc)
-    stmt = (
-        select(User, Vacation.start_date)
-        .outerjoin(Vacation, User.id == Vacation.receiver_id)
-        .filter(User.id.notin_(active_users_id))
-        .limit(size)
-        .order_by(User.id)
-    )
-    if lc:
-        stmt = stmt.filter(User.id > lc)
-    if position_id:
-        stmt = stmt.filter(User.position_id == position_id)
-    results = await session.execute(stmt)
-    results = results.all()
-    users = [
-        UserNotOnVacation(
-            id=user.id,
-            name=user.name,
-            surname=user.surname,
-            position_id=user.position_id,
-            email=user.email,
-            start_date=start_date,
-        )
-        for user, start_date in results
-    ]
-    last_id = users[-1].id if users else None
-    return UserPaginationAllNotVacationResponse(
-        items=users, next_cursor=last_id, size=size
-    )
-
-
-@router.get("/all/on_vacation", response_model=UserPaginationAllVacationResponse)
-async def get_all_vacation(
-    size: int,
-    lc: Optional[int] = None,
-    position_id: Optional[int] = None,
-    user: User = Depends(current_user),
-    session: AsyncSession = Depends(get_async_session),
-):
-    stmt = (
-        select(User, Vacation.end_date)
-        .join(Vacation, User.id == Vacation.receiver_id)
-        .filter(
-            and_(
-                Vacation.end_date > date.today(),
-                Vacation.start_date < date.today(),
-            )
-        )
-        .limit(size)
-        .order_by(User.id)
-    )
-    if lc:
-        stmt = stmt.filter(User.id > lc)
-    if position_id:
-        stmt = stmt.filter(User.position_id == position_id)
-    results = await session.execute(stmt)
-    results = results.all()
-    users = [
-        UserOnVacation(
-            id=user.id,
-            name=user.name,
-            surname=user.surname,
-            position_id=user.position_id,
-            email=user.email,
-            end_date=end_date,
-        )
-        for user, end_date in results
-    ]
-    last_id = users[-1].id if users else None
-    return UserPaginationAllVacationResponse(
-        items=users, next_cursor=last_id, size=size
     )
 
 
