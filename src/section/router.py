@@ -1,6 +1,7 @@
 from typing import Annotated
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
+from pydantic import EmailStr
 from sqlalchemy import delete, insert, select, update
 
 from src.section.schemas import SectionCreate, SectionRead
@@ -8,6 +9,8 @@ from src.databasemodels import Section, User
 from src.user.router import current_super_user, current_user
 from src.database import get_async_session
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
+from src.utils.logger import logger
 
 router = APIRouter(prefix="/section", tags=["section"])
 
@@ -15,52 +18,96 @@ router = APIRouter(prefix="/section", tags=["section"])
 @router.post("/add/")
 async def create_new_section(
     user: Annotated[User, Depends(current_super_user)],
-    data: SectionCreate,
+    section: SectionCreate,
     session: AsyncSession = Depends(get_async_session),
 ):
-    stmt = insert(Section).values(data.model_dump())
-    await session.execute(stmt)
-    await session.commit()
-    return JSONResponse(content={"message": "section created"}, status_code=201)
+    try:
+        stmt = insert(Section).values(section.model_dump())
+
+        await session.execute(stmt)
+        await session.commit()
+
+    except IntegrityError as e:
+        await session.rollback()
+
+        error = str(e.orig)
+
+        if "UNIQUE" in error:
+            logger.info(
+                f"{user.email}: Trying to add an existing section {section.name}"
+            )
+
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Section already exist"
+            )
+
+        if "FOREIGN KEY" in error:
+            logger.info(
+                f"{user.email}: Trying to add a section with a non-existent user {section.head_email}"
+            )
+
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"The user with email {section.head_email} does not exist ",
+            )
+
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    logger.info(
+        f"{user.email}: Added new section name = {section.name}, head = {section.head_email}"
+    )
+
+    return JSONResponse(
+        content={"Message": "Section created"}, status_code=status.HTTP_201_CREATED
+    )
 
 
-@router.delete("/delete/{section_id}")
+@router.delete("/delete/{section_name}")
 async def delete_section(
     user: Annotated[User, Depends(current_super_user)],
-    section_id: int,
+    section_name: str,
     session: AsyncSession = Depends(get_async_session),
 ):
-    stmt = delete(Section).where(Section.id == section_id)
+
+    stmt = delete(Section).where(Section.name == section_name)
     result = await session.execute(stmt)
     await session.commit()
     if result.rowcount == 0:
-        raise HTTPException(status_code=404, detail="Section not found")
-    return JSONResponse(content={"message": "section deleted"}, status_code=200)
+        logger.info()
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Section {section_name} not found",
+        )
+
+    return JSONResponse(content={"Message": "Section deleted"}, status_code=200)
 
 
-@router.patch("/update/{section_id}")
+@router.patch("/update/{section_name}")
 async def update_section(
     user: Annotated[User, Depends(current_super_user)],
-    section_id: int,
-    head_id: int,
+    section: SectionCreate,
     session: AsyncSession = Depends(get_async_session),
 ):
-    stmt = update(Section).where(Section.id == section_id).values(head_id=head_id)
+    stmt = (
+        update(Section)
+        .where(Section.name == section.name)
+        .values(head_email=section.head_email)
+    )
     result = await session.execute(stmt)
     await session.commit()
 
     if result.rowcount == 0:
-        raise HTTPException(status_code=404, detail="section not found")
-    return JSONResponse(content={"message": "section update"}, status_code=200)
+        raise HTTPException(status_code=404, detail="Section not found")
+    return JSONResponse(content={"Message": "Section update"}, status_code=200)
 
 
-@router.get("/{section_id}", response_model=SectionRead)
+@router.get("/{section_name}", response_model=SectionRead)
 async def get_section_by_id(
     user: Annotated[User, Depends(current_user)],
-    section_id: int,
+    section_name: str,
     session: AsyncSession = Depends(get_async_session),
 ):
-    stmt = select(Section).where(Section.id == section_id)
+    stmt = select(Section).where(Section.name == section_name)
     result = await session.execute(stmt)
 
     result = result.scalars().one_or_none()
@@ -76,7 +123,7 @@ async def get_section(
     user: User = Depends(current_user),
     session: AsyncSession = Depends(get_async_session),
 ):
-    stmt = select(Section).order_by(Section.id)
+    stmt = select(Section).order_by(Section.name)
 
     results = await session.execute(stmt)
     results = results.scalars().all()
