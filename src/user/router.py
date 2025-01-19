@@ -1,7 +1,6 @@
 from datetime import date
-import email
 from typing import Annotated, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 from pydantic import EmailStr
 from sqlalchemy import and_, case, delete, exists, func, select, tuple_, update
@@ -46,9 +45,9 @@ async def get_user_by_email(
     result = await session.execute(query)
     result = result.unique().one_or_none()
     if result is None:
-        logger.error(f"User {user_email} not found")
+        logger.error(f"{user.email}: User {user_email} not found")
         raise HTTPException(status_code=404, detail="User not found")
-    logger.info(f"Selected info user {user_email}")
+    logger.info(f"{user.email}: Selected info user {user_email}")
     user, position_name, section_name = result
     on_vacation = False
     for vacation in user.receiver_vacations:
@@ -79,10 +78,15 @@ async def get_superuser(
     await session.commit()
 
     if result.rowcount == 0:
-        raise HTTPException(status_code=404, detail="User not found")
-    logger.info(f"User {user_email} upgrade")
+        logger.info(f"{user.email}: User {user_email} not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
+    logger.info(f"{user.email}: User {user_email} upgrade")
     return JSONResponse(
-        content={"Message": f"User {user_email} upgrade"}, status_code=200
+        content={"Message": f"User {user_email} upgrade"},
+        status_code=status.HTTP_200_OK,
     )
 
 
@@ -93,19 +97,25 @@ async def fire_user(
     session: AsyncSession = Depends(get_async_session),
 ):
     if user.email == user_email:
-        logger.info(f"Attempted self-deleting {user_email}")
-        raise HTTPException(status_code=404, detail=f"You cannot delete yourself")
+        logger.info(f"{user.email}: Attempted self-deleting")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"You cannot delete yourself"
+        )
 
     stmt = delete(User).filter(User.email == user_email)
     result = await session.execute(stmt)
     await session.commit()
 
     if result.rowcount == 0:
-        raise HTTPException(status_code=404, detail=f"User {user_email} not found")
+        logger.info(f"Trying to delete a non-existent user {user_email}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"User {user_email} not found"
+        )
 
-    logger.info(f"User {user_email} deleted")
+    logger.info(f"{user.email}: User {user_email} deleted")
     return JSONResponse(
-        content={"Message": f"User {user_email} deleted"}, status_code=200
+        content={"Message": f"User {user_email} deleted"},
+        status_code=status.HTTP_200_OK,
     )
 
 
@@ -198,8 +208,12 @@ async def get_users(
     is_final = False if len(results) > page_size else True
 
     if not is_final:
-        last_name = users[-2].name if users else None
-        last_surname = users[-2].surname if users else None
+        last_name = users[-2].name
+        last_surname = users[-2].surname
+
+    logger.info(
+        f"{user.email}: Selected users with params pg_size = {page_size}, desc = {desc}, l_name = {last_name}, l_sur = {last_surname}, vac = {on_vacation_only}"
+    )
 
     return UserPaginationResponse(
         items=users[:page_size],
@@ -209,18 +223,28 @@ async def get_users(
     )
 
 
-@router.patch("/pos/{user_id}/{position_id}")
+@router.patch("/pos/{user_email}/{position_name}")
 async def update_position(
     user: Annotated[User, Depends(current_super_user)],
-    user_id: int,
-    position_id: int,
+    user_email: EmailStr,
+    position_name: str,
     session: AsyncSession = Depends(get_async_session),
 ):
-    stmt = update(User).where(User.id == user_id).values(position_id=position_id)
+    stmt = (
+        update(User)
+        .filter(User.email == user_email)
+        .values(position_name=position_name)
+    )
     result = await session.execute(stmt)
     await session.commit()
 
     if result.rowcount == 0:
-        raise HTTPException(status_code=404, detail="User not found")
+        logger.info(f"{user.email}: Trying to update non-existing user {user_email}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
 
-    return JSONResponse(content={"Message": "User update"}, status_code=200)
+    logger.info(f"{user.email}: Update {user_email}")
+    return JSONResponse(
+        content={"Message": "User update"}, status_code=status.HTTP_200_OK
+    )
