@@ -28,11 +28,10 @@ async def create_new_section(
         await session.commit()
 
     except IntegrityError as e:
-        await session.rollback()
 
         error = str(e.orig)
 
-        if "UNIQUE" in error:
+        if "Unique" in error:
             logger.info(
                 f"{user.email}: Trying to add an existing section {section.name}"
             )
@@ -41,7 +40,7 @@ async def create_new_section(
                 status_code=status.HTTP_400_BAD_REQUEST, detail="Section already exist"
             )
 
-        if "FOREIGN KEY" in error:
+        if "Foreign" in error:
             logger.info(
                 f"{user.email}: Trying to add a section with a non-existent user {section.head_email}"
             )
@@ -58,7 +57,8 @@ async def create_new_section(
     )
 
     return JSONResponse(
-        content={"Message": "Section created"}, status_code=status.HTTP_201_CREATED
+        content={"Message": f"Section {section.name} created"},
+        status_code=status.HTTP_201_CREATED,
     )
 
 
@@ -72,13 +72,17 @@ async def delete_section(
     stmt = delete(Section).where(Section.name == section_name)
     result = await session.execute(stmt)
     await session.commit()
+
     if result.rowcount == 0:
-        logger.info()
+        logger.info(
+            f"{user.email}: Trying to delete a non-existent section {section_name}"
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Section {section_name} not found",
         )
 
+    logger.info(f"{user.email}: Section {section_name} deleted")
     return JSONResponse(content={"Message": "Section deleted"}, status_code=200)
 
 

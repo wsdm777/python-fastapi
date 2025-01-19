@@ -3,8 +3,8 @@ from fastapi import FastAPI
 from src.auth.authentification import fastapi_users, auth_backend
 from src.user.router import router as userRouter
 from src.auth.router import router as authRouter
-from src.vacations.router import router as vacRouter
-from src.positions.router import router as posRouter
+from src.vacation.router import router as vacRouter
+from src.position.router import router as posRouter
 from src.section.router import router as secRouter
 from src.utils.create_superuser import create_superuser
 from src.utils.logger import logger

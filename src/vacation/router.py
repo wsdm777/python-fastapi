@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.databasemodels import User, Vacation
 from src.user.router import current_super_user
 from src.database import get_async_session
-from src.vacations.schemas import (
+from src.vacation.schemas import (
     VacationCreate,
     VacationPaginationResponse,
     VacationRead,

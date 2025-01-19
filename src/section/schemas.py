@@ -1,11 +1,11 @@
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 
 
 class SectionRead(BaseModel):
     id: int
     name: str
-    head_id: int | None
+    head_email: EmailStr | None
 
     class Config:
         from_attributes = True
@@ -13,7 +13,7 @@ class SectionRead(BaseModel):
 
 class SectionCreate(BaseModel):
     name: str
-    head_id: Optional[int] = None
+    head_email: EmailStr = None
 
 
 class UserPaginationResponse(BaseModel):
