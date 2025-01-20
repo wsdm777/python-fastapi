@@ -42,7 +42,7 @@ async def create_new_section(
 
         if "Foreign" in error:
             logger.info(
-                f"{user.email}: Trying to add a section with a non-existent user {section.head_email}"
+                f"{user.email}: Trying to add a section with a non-existent head {section.head_email}"
             )
 
             raise HTTPException(
@@ -92,17 +92,47 @@ async def update_section(
     section: SectionCreate,
     session: AsyncSession = Depends(get_async_session),
 ):
-    stmt = (
-        update(Section)
-        .where(Section.name == section.name)
-        .values(head_email=section.head_email)
-    )
-    result = await session.execute(stmt)
-    await session.commit()
+    try:
+        stmt = (
+            update(Section)
+            .where(Section.name == section.name)
+            .values(head_email=section.head_email)
+        )
+        result = await session.execute(stmt)
+        await session.commit()
+
+    except IntegrityError as e:
+
+        error = str(e.orig)
+
+        if "Foreign" in error:
+
+            logger.info(
+                f"{user.email}: Trying to change head of section {section.name} to non-existent user {section.head_email}"
+            )
+
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"The user with email {section.head_email} does not exist ",
+            )
+
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     if result.rowcount == 0:
-        raise HTTPException(status_code=404, detail="Section not found")
-    return JSONResponse(content={"Message": "Section update"}, status_code=200)
+        logger.info(
+            f"{user.email}: Trying to update non-existent section {section.name}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Section {section.name} not found",
+        )
+
+    logger.info(
+        f"{user.email}: Change section {section.name} head to {section.head_email}"
+    )
+    return JSONResponse(
+        content={"Message": "Section update"}, status_code=status.HTTP_200_OK
+    )
 
 
 @router.get("/{section_name}", response_model=SectionRead)

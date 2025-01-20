@@ -57,7 +57,7 @@ async def create_superuser(
         async with get_async_session_context() as session:
             async with get_user_db_context(session) as user_db:
                 async with get_user_manager_context(user_db) as user_manager:
-                    query = select(User).filter(User.is_superuser == True).limit(1)
+                    query = select(User.id).filter(User.is_superuser == True).limit(1)
                     result = await session.execute(query)
                     if result.scalar() is None:
                         user = await create_user(
