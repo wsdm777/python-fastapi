@@ -6,6 +6,7 @@ from pydantic import EmailStr
 from sqlalchemy import and_, case, delete, exists, func, select, tuple_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload, aliased
+from src.auth.schemas import UserTokenInfo
 from src.utils.logger import logger
 from src.database import get_async_session
 from src.auth.authentification import fastapi_users
@@ -19,18 +20,16 @@ from src.user.schemas import (
     UserPaginationAllVacationResponse,
     UserPaginationResponse,
 )
-
+from src.auth.JWT import get_user_email
 
 router = APIRouter(prefix="/user", tags=["user"])
 
-current_user = fastapi_users.current_user()
-
-current_super_user = fastapi_users.current_user(superuser=True)
+current_user = get_user_email
 
 
 @router.get("/{user_email}", response_model=UserInfo)
 async def get_user_by_email(
-    user: Annotated[User, Depends(current_user)],
+    user: Annotated[UserTokenInfo, Depends(current_user)],
     user_email: EmailStr,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -46,7 +45,9 @@ async def get_user_by_email(
     result = result.unique().one_or_none()
     if result is None:
         logger.error(f"{user.email}: User {user_email} not found")
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
     logger.info(f"{user.email}: Selected info user {user_email}")
     user, position_name, section_name = result
     on_vacation = False
@@ -69,7 +70,7 @@ async def get_user_by_email(
 
 @router.patch("/getsuper/{user_email}")
 async def get_superuser(
-    user: Annotated[User, Depends(current_super_user)],
+    user: Annotated[UserTokenInfo, Depends(lambda: current_user(superuser=True))],
     user_email: EmailStr,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -92,7 +93,7 @@ async def get_superuser(
 
 @router.delete("/fire/{user_email}")
 async def fire_user(
-    user: Annotated[User, Depends(current_super_user)],
+    user: Annotated[UserTokenInfo, Depends(lambda: current_user(superuser=True))],
     user_email: EmailStr,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -133,7 +134,7 @@ async def get_users(
     on_vacation_only: Optional[bool] = Query(
         None, description="Фильтр пользователей в отпуске (True/False)"
     ),
-    user: User = Depends(current_user),
+    user: UserTokenInfo = Depends(current_user),
     session: AsyncSession = Depends(get_async_session),
 ):
     query = (
@@ -225,7 +226,7 @@ async def get_users(
 
 @router.patch("/pos/{user_email}/{position_name}")
 async def update_position(
-    user: Annotated[User, Depends(current_super_user)],
+    user: Annotated[UserTokenInfo, Depends(lambda: current_user(superuser=True))],
     user_email: EmailStr,
     position_name: str,
     session: AsyncSession = Depends(get_async_session),
