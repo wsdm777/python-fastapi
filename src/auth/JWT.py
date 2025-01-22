@@ -1,4 +1,5 @@
-from fastapi import HTTPException, Request
+from typing import Annotated
+from fastapi import Depends, HTTPException, Request
 from fastapi_users.authentication import JWTStrategy
 from jose import jwt
 from src.auth.schemas import UserTokenInfo
@@ -24,7 +25,7 @@ class CustomJWTStrategy(JWTStrategy):
         pass
 
 
-def get_user_email(request: Request, superuser=None) -> dict:
+def get_user_email(request: Request, superuser: bool = False) -> dict:
     token = request.cookies.get("authcook")
     if not token:
         raise HTTPException(
@@ -39,6 +40,15 @@ def get_user_email(request: Request, superuser=None) -> dict:
 
     email = payload.get("email")
     is_superuser = payload.get("admin")
-    if superuser is True and is_superuser is False:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
     return UserTokenInfo(email=email, is_superuser=is_superuser)
+
+
+def get_current_user(request: Request) -> UserTokenInfo:
+    return get_user_email(request)
+
+
+def get_current_superuser(request: Request) -> UserTokenInfo:
+    user = get_user_email(request)
+    if not user.is_superuser:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    return user
