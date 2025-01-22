@@ -1,4 +1,5 @@
 from datetime import date
+from functools import partial
 from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
@@ -25,6 +26,7 @@ from src.auth.JWT import get_user_email
 router = APIRouter(prefix="/user", tags=["user"])
 
 current_user = get_user_email
+current_super_user = partial(current_user, superuser=True)
 
 
 @router.get("/{user_email}", response_model=UserInfo)
@@ -70,7 +72,7 @@ async def get_user_by_email(
 
 @router.patch("/getsuper/{user_email}")
 async def get_superuser(
-    user: Annotated[UserTokenInfo, Depends(lambda: current_user(superuser=True))],
+    user: Annotated[UserTokenInfo, Depends(current_super_user)],
     user_email: EmailStr,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -93,7 +95,7 @@ async def get_superuser(
 
 @router.delete("/fire/{user_email}")
 async def fire_user(
-    user: Annotated[UserTokenInfo, Depends(lambda: current_user(superuser=True))],
+    user: Annotated[UserTokenInfo, Depends(current_super_user)],
     user_email: EmailStr,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -226,7 +228,7 @@ async def get_users(
 
 @router.patch("/pos/{user_email}/{position_name}")
 async def update_position(
-    user: Annotated[UserTokenInfo, Depends(lambda: current_user(superuser=True))],
+    user: Annotated[UserTokenInfo, Depends(current_super_user)],
     user_email: EmailStr,
     position_name: str,
     session: AsyncSession = Depends(get_async_session),
