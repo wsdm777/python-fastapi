@@ -4,6 +4,10 @@ from fastapi_users import schemas
 from pydantic import BaseModel, EmailStr, field_validator
 
 
+class MessageResponse(BaseModel):
+    Message: str
+
+
 class UserRead(schemas.BaseUser[int]):
     id: int
     name: str

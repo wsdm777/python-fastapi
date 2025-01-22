@@ -1,10 +1,14 @@
-from typing import Annotated
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Annotated, Optional
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
-from pydantic import EmailStr
 from sqlalchemy import delete, insert, select, update
-
-from src.section.schemas import SectionCreate, SectionRead
+from src.auth.schemas import UserTokenInfo
+from src.section.schemas import (
+    MessageResponse,
+    SectionCreate,
+    SectionPaginationResponse,
+    SectionRead,
+)
 from src.databasemodels import Section, User
 from src.user.router import current_super_user, current_user
 from src.database import get_async_session
@@ -15,9 +19,9 @@ from src.utils.logger import logger
 router = APIRouter(prefix="/section", tags=["section"])
 
 
-@router.post("/add/")
+@router.post("/add/", response_model=MessageResponse)
 async def create_new_section(
-    user: Annotated[User, Depends(current_super_user)],
+    user: Annotated[UserTokenInfo, Depends(current_super_user)],
     section: SectionCreate,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -62,9 +66,9 @@ async def create_new_section(
     )
 
 
-@router.delete("/delete/{section_name}")
+@router.delete("/delete/{section_name}", response_model=MessageResponse)
 async def delete_section(
-    user: Annotated[User, Depends(current_super_user)],
+    user: Annotated[UserTokenInfo, Depends(current_super_user)],
     section_name: str,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -86,9 +90,9 @@ async def delete_section(
     return JSONResponse(content={"Message": "Section deleted"}, status_code=200)
 
 
-@router.patch("/update/{section_name}")
+@router.patch("/update/{section_name}", response_model=MessageResponse)
 async def update_section(
-    user: Annotated[User, Depends(current_super_user)],
+    user: Annotated[UserTokenInfo, Depends(current_super_user)],
     section: SectionCreate,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -136,31 +140,74 @@ async def update_section(
 
 
 @router.get("/{section_name}", response_model=SectionRead)
-async def get_section_by_id(
-    user: Annotated[User, Depends(current_user)],
+async def get_section_by_name(
+    user: Annotated[UserTokenInfo, Depends(current_user)],
     section_name: str,
     session: AsyncSession = Depends(get_async_session),
 ):
-    stmt = select(Section).where(Section.name == section_name)
-    result = await session.execute(stmt)
+    query = select(Section).filter(Section.name == section_name)
+    result = await session.execute(query)
 
     result = result.scalars().one_or_none()
 
     if result is None:
-        raise HTTPException(status_code=404, detail="Section not found")
+        logger.info(
+            f"{user.email}: Trying to delete non-existent section {section_name}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Section {section_name} not found",
+        )
 
+    logger.info(f"{user.email}: Delete section {section_name}")
     return SectionRead.model_validate(result)
 
 
-@router.get("/all/", response_model=list[SectionRead])
-async def get_section(
-    user: User = Depends(current_user),
+@router.get("/list/", response_model=SectionPaginationResponse)
+async def get_sections(
+    desc: bool = Query(False, description="Тип сортировки"),
+    filter_name: Optional[str] = Query(None, description="Фамилия"),
+    page_size: int = Query(10, ge=1, le=100, description="Размер страницы"),
+    last_section_name: Optional[str] = Query(
+        None, description="Последний на предыдущей странице"
+    ),
+    user: UserTokenInfo = Depends(current_user),
     session: AsyncSession = Depends(get_async_session),
 ):
-    stmt = select(Section).order_by(Section.name)
+    query = select(Section)
 
-    results = await session.execute(stmt)
+    query = (
+        query.order_by(Section.name.desc()) if desc else query.order_by(Section.name)
+    )
+
+    if last_section_name:
+        cursor_filter = (
+            (Section.name < last_section_name)
+            if desc
+            else (Section.name > last_section_name)
+        )
+        query.filter(cursor_filter)
+
+    if filter_name:
+        query = query.filter(User.surname.ilike(f"%{filter_name}%"))
+
+    query = query.limit(page_size + 1)
+
+    results = await session.execute(query)
     results = results.scalars().all()
     sections = [SectionRead.model_validate(section) for section in results]
 
-    return sections
+    is_final = False if len(results) > page_size else True
+
+    now_last_name = None if is_final else sections[-2].name
+
+    logger.info(
+        f"{user.email}: Selected sections with params pg_size = {page_size}, desc = {desc}, l_name = {last_section_name}"
+    )
+
+    return SectionPaginationResponse(
+        items=sections[:page_size],
+        last_section_name=now_last_name,
+        final=is_final,
+        size=page_size,
+    )

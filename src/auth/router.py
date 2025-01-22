@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from src.auth.authentification import fastapi_users
 from src.user.schemas import UserCreate, UserRead
-from src.user.router import current_user
+from src.user.router import current_super_user
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from src.auth.authentification import fastapi_users, auth_backend
@@ -11,16 +11,12 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 router.include_router(
     fastapi_users.get_register_router(UserRead, UserCreate),
-    dependencies=[Depends(lambda: current_user(superuser=True))],
+    dependencies=[Depends(current_super_user)],
 )
 
 auth_router = fastapi_users.get_auth_router(auth_backend)
 
-auth_router.routes = [
-    route
-    for route in auth_router.routes
-    if not (isinstance(route, APIRoute) and route.path == "/logout")
-]
+auth_router.routes = [auth_router.routes[0]]
 
 router.include_router(auth_router)
 

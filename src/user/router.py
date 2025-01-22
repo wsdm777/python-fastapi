@@ -1,5 +1,4 @@
 from datetime import date
-from functools import partial
 from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
@@ -10,23 +9,19 @@ from sqlalchemy.orm import selectinload, aliased
 from src.auth.schemas import UserTokenInfo
 from src.utils.logger import logger
 from src.database import get_async_session
-from src.auth.authentification import fastapi_users
 from src.databasemodels import Position, Section, User, Vacation
 from src.user.schemas import (
+    MessageResponse,
     UserInfo,
-    UserNotOnVacation,
-    UserOnVacation,
     UserPagination,
-    UserPaginationAllNotVacationResponse,
-    UserPaginationAllVacationResponse,
     UserPaginationResponse,
 )
-from src.auth.JWT import get_user_email
+from src.auth.JWT import get_current_superuser, get_current_user
 
 router = APIRouter(prefix="/user", tags=["user"])
 
-current_user = get_user_email
-current_super_user = partial(current_user, superuser=True)
+current_user = get_current_user
+current_super_user = get_current_superuser
 
 
 @router.get("/{user_email}", response_model=UserInfo)
@@ -70,8 +65,8 @@ async def get_user_by_email(
     )
 
 
-@router.patch("/getsuper/{user_email}")
-async def get_superuser(
+@router.patch("/getsuper/{user_email}", response_model=MessageResponse)
+async def update_user_access(
     user: Annotated[UserTokenInfo, Depends(current_super_user)],
     user_email: EmailStr,
     session: AsyncSession = Depends(get_async_session),
@@ -93,8 +88,8 @@ async def get_superuser(
     )
 
 
-@router.delete("/fire/{user_email}")
-async def fire_user(
+@router.delete("/hire/{user_email}", response_model=MessageResponse)
+async def hire_user(
     user: Annotated[UserTokenInfo, Depends(current_super_user)],
     user_email: EmailStr,
     session: AsyncSession = Depends(get_async_session),
@@ -122,7 +117,7 @@ async def fire_user(
     )
 
 
-@router.get("/all/", response_model=UserPaginationResponse)
+@router.get("/list/", response_model=UserPaginationResponse)
 async def get_users(
     desc: bool = Query(False, description="Тип сортировки"),
     filter_surname: Optional[str] = Query(None, description="Фамилия"),
@@ -210,9 +205,8 @@ async def get_users(
 
     is_final = False if len(results) > page_size else True
 
-    if not is_final:
-        last_name = users[-2].name
-        last_surname = users[-2].surname
+    now_last_name = None if is_final else users[-2].name
+    now_last_surname = None if is_final else users[-2].surname
 
     logger.info(
         f"{user.email}: Selected users with params pg_size = {page_size}, desc = {desc}, l_name = {last_name}, l_sur = {last_surname}, vac = {on_vacation_only}"
@@ -220,14 +214,16 @@ async def get_users(
 
     return UserPaginationResponse(
         items=users[:page_size],
-        next_cursor={"last_surname": last_surname, "last_name": last_name},
+        next_cursor={"last_surname": now_last_surname, "last_name": now_last_name},
         final=is_final,
         size=page_size,
     )
 
 
-@router.patch("/pos/{user_email}/{position_name}")
-async def update_position(
+@router.patch(
+    "/new_position/{user_email}/{position_name}", response_model=MessageResponse
+)
+async def update_user_position(
     user: Annotated[UserTokenInfo, Depends(current_super_user)],
     user_email: EmailStr,
     position_name: str,

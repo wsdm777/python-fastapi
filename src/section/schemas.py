@@ -1,5 +1,8 @@
-from typing import Optional
 from pydantic import BaseModel, EmailStr
+
+
+class MessageResponse(BaseModel):
+    Message: str
 
 
 class SectionRead(BaseModel):
@@ -16,7 +19,11 @@ class SectionCreate(BaseModel):
     head_email: EmailStr = None
 
 
-class UserPaginationResponse(BaseModel):
+class SectionPaginationResponse(BaseModel):
     items: list[SectionRead]
-    next_cursor: int
+    last_section_name: str | None
+    final: bool
     size: int
+
+    class ConfigDict:
+        from_attributes = True
