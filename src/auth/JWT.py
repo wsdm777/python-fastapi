@@ -24,7 +24,7 @@ class CustomJWTStrategy(JWTStrategy):
         pass
 
 
-async def get_user_email(request: Request, superuser=None) -> dict:
+def get_user_email(request: Request, superuser=None) -> dict:
     token = request.cookies.get("authcook")
     if not token:
         raise HTTPException(
