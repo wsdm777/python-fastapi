@@ -57,7 +57,7 @@ async def create_new_position(
     )
 
     return JSONResponse(
-        content={"Message": "Position created"}, status_code=status.HTTP_201_CREATED
+        content={"message": "Position created"}, status_code=status.HTTP_201_CREATED
     )
 
 
@@ -79,27 +79,58 @@ async def delete_position(
             status_code=status.HTTP_404_NOT_FOUND, detail="Position not found"
         )
 
+    logger.info(f"{user.email}: Deleted position {position_name}")
     return JSONResponse(
         content={"Message": "Position deleted"}, status_code=status.HTTP_202_ACCEPTED
     )
 
 
-@router.patch("/update/{position_id}")
+@router.patch("/update/{section_name}/{position_name}")
 async def update_position(
     user: Annotated[User, Depends(get_current_superuser)],
-    position_id: int,
-    section_id: int,
+    position_name: str,
+    section_name: str,
     session: AsyncSession = Depends(get_async_session),
 ):
-    stmt = (
-        update(Position).where(Position.id == position_id).values(section_id=section_id)
-    )
-    result = await session.execute(stmt)
-    await session.commit()
+    try:
+        stmt = (
+            update(Position)
+            .filter(Position.name == position_name)
+            .values(section_name=section_name)
+        )
+        result = await session.execute(stmt)
+        await session.commit()
+    except IntegrityError as e:
+
+        error = str(e.orig)
+
+        if "Foreign" in error:
+
+            logger.info(
+                f"{user.email}: Trying to change position section name to non-existent {section_name}"
+            )
+
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"The section {section_name} does not exist ",
+            )
+
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     if result.rowcount == 0:
-        raise HTTPException(status_code=404, detail="position not found")
-    return JSONResponse(content={"message": "position update"}, status_code=200)
+        logger.info(
+            f"{user.email}: Trying to update non-existent position {position_name}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Position not found"
+        )
+
+    logger.info(
+        f"{user.email}: Update position {position_name}, new section = {section_name}"
+    )
+    return JSONResponse(
+        content={"message": "position update"}, status_code=status.HTTP_200_OK
+    )
 
 
 @router.get("/{position_id}", response_model=PositionRead)
