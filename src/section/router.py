@@ -73,7 +73,7 @@ async def delete_section(
     session: AsyncSession = Depends(get_async_session),
 ):
 
-    stmt = delete(Section).where(Section.name == section_name)
+    stmt = delete(Section).filter(Section.name == section_name)
     result = await session.execute(stmt)
     await session.commit()
 
@@ -87,7 +87,9 @@ async def delete_section(
         )
 
     logger.info(f"{user.email}: Section {section_name} deleted")
-    return JSONResponse(content={"Message": "Section deleted"}, status_code=200)
+    return JSONResponse(
+        content={"Message": "Section deleted"}, status_code=status.HTTP_202_ACCEPTED
+    )
 
 
 @router.patch("/update/{section_name}", response_model=MessageResponse)
@@ -99,7 +101,7 @@ async def update_section(
     try:
         stmt = (
             update(Section)
-            .where(Section.name == section.name)
+            .filter(Section.name == section.name)
             .values(head_email=section.head_email)
         )
         result = await session.execute(stmt)

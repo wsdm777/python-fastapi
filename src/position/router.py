@@ -61,18 +61,27 @@ async def create_new_position(
     )
 
 
-@router.delete("/delete/{position_id}")
+@router.delete("/delete/{position_name}", response_model=MessageResponse)
 async def delete_position(
     user: Annotated[User, Depends(get_current_superuser)],
-    position_id: int,
+    position_name: str,
     session: AsyncSession = Depends(get_async_session),
 ):
-    stmt = delete(Position).where(Position.id == position_id)
+    stmt = delete(Position).filter(Position.name == position_name)
     result = await session.execute(stmt)
     await session.commit()
+
     if result.rowcount == 0:
-        raise HTTPException(status_code=404, detail="Postion not found")
-    return JSONResponse(content={"message": "position deleted"}, status_code=200)
+        logger.info(
+            f"{user.email}: Trying to delete non-existent position {position_name}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Position not found"
+        )
+
+    return JSONResponse(
+        content={"Message": "Position deleted"}, status_code=status.HTTP_202_ACCEPTED
+    )
 
 
 @router.patch("/update/{position_id}")
