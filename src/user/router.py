@@ -80,7 +80,7 @@ async def update_user_access(
 
     logger.info(f"{user.email}: User {user_email} upgrade")
     return JSONResponse(
-        content={"Message": f"User {user_email} upgrade"},
+        content={"message": f"User {user_email} upgrade"},
         status_code=status.HTTP_200_OK,
     )
 
@@ -109,7 +109,7 @@ async def hire_user(
 
     logger.info(f"{user.email}: User {user_email} deleted")
     return JSONResponse(
-        content={"Message": f"User {user_email} deleted"},
+        content={"message": f"User {user_email} deleted"},
         status_code=status.HTTP_202_ACCEPTED,
     )
 
@@ -242,5 +242,5 @@ async def update_user_position(
 
     logger.info(f"{user.email}: Update {user_email}")
     return JSONResponse(
-        content={"Message": "User update"}, status_code=status.HTTP_200_OK
+        content={"message": "User update"}, status_code=status.HTTP_200_OK
     )

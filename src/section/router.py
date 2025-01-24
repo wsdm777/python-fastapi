@@ -61,7 +61,7 @@ async def create_new_section(
     )
 
     return JSONResponse(
-        content={"Message": f"Section {section.name} created"},
+        content={"message": f"Section {section.name} created"},
         status_code=status.HTTP_201_CREATED,
     )
 
@@ -88,7 +88,7 @@ async def delete_section(
 
     logger.info(f"{user.email}: Section {section_name} deleted")
     return JSONResponse(
-        content={"Message": "Section deleted"}, status_code=status.HTTP_202_ACCEPTED
+        content={"message": "Section deleted"}, status_code=status.HTTP_202_ACCEPTED
     )
 
 
@@ -137,7 +137,7 @@ async def update_section(
         f"{user.email}: Change section {section.name} head to {section.head_email}"
     )
     return JSONResponse(
-        content={"Message": "Section update"}, status_code=status.HTTP_200_OK
+        content={"message": "Section update"}, status_code=status.HTTP_200_OK
     )
 
 
