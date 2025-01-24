@@ -168,7 +168,7 @@ async def get_section_by_name(
 @router.get("/list/", response_model=SectionPaginationResponse)
 async def get_sections(
     desc: bool = Query(False, description="Тип сортировки"),
-    filter_name: Optional[str] = Query(None, description="Фамилия"),
+    filter_name: Optional[str] = Query(None, description="Отдел"),
     page_size: int = Query(10, ge=1, le=100, description="Размер страницы"),
     last_section_name: Optional[str] = Query(
         None, description="Последний на предыдущей странице"
@@ -176,6 +176,8 @@ async def get_sections(
     user: UserTokenInfo = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ):
+    log = f"{user.email}: Selected sections with params pg_size = {page_size}, desc = {desc}"
+
     query = select(Section)
 
     query = (
@@ -183,6 +185,8 @@ async def get_sections(
     )
 
     if last_section_name:
+        log += f", last_name = {last_section_name}"
+
         cursor_filter = (
             (Section.name < last_section_name)
             if desc
@@ -191,7 +195,9 @@ async def get_sections(
         query.filter(cursor_filter)
 
     if filter_name:
-        query = query.filter(User.surname.ilike(f"%{filter_name}%"))
+        log += f", filter name = {filter_name}"
+
+        query = query.filter(Section.name.ilike(f"%{filter_name}%"))
 
     query = query.limit(page_size + 1)
 
@@ -203,9 +209,7 @@ async def get_sections(
 
     now_last_name = None if is_final else sections[-2].name
 
-    logger.info(
-        f"{user.email}: Selected sections with params pg_size = {page_size}, desc = {desc}, l_name = {last_section_name}"
-    )
+    logger.info(log)
 
     return SectionPaginationResponse(
         items=sections[:page_size],

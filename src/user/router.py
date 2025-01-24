@@ -131,6 +131,10 @@ async def get_users(
     user: UserTokenInfo = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ):
+    log = (
+        f"{user.email}: Selected users with params pg_size = {page_size}, desc = {desc}"
+    )
+
     query = (
         select(
             User.id,
@@ -163,6 +167,8 @@ async def get_users(
     )
 
     if last_surname and last_name:
+        log += f", last_surname = {last_surname}, last_name = {last_name}"
+
         cursor_filter = (
             tuple_(User.surname, User.name) < tuple_(last_surname, last_name)
             if desc
@@ -171,6 +177,8 @@ async def get_users(
         query = query.filter(cursor_filter)
 
     if filter_surname:
+        log += f", filter surname = {filter_surname}"
+
         query = query.filter(User.surname.ilike(f"%{filter_surname}%"))
 
     if on_vacation_only is not None:
@@ -205,9 +213,7 @@ async def get_users(
     now_last_name = None if is_final else users[-2].name
     now_last_surname = None if is_final else users[-2].surname
 
-    logger.info(
-        f"{user.email}: Selected users with params pg_size = {page_size}, desc = {desc}, l_name = {last_name}, l_sur = {last_surname}, vac = {on_vacation_only}"
-    )
+    logger.info(log)
 
     return UserPaginationResponse(
         items=users[:page_size],
