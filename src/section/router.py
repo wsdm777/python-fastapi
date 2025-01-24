@@ -10,7 +10,7 @@ from src.section.schemas import (
     SectionPaginationResponse,
     SectionRead,
 )
-from src.databasemodels import Section, User
+from src.databasemodels import Section
 from src.database import get_async_session
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError

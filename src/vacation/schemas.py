@@ -1,12 +1,16 @@
 from datetime import date
 from typing import Optional
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, EmailStr, model_validator
+
+
+class MessageResponse(BaseModel):
+    Message: str
 
 
 class VacationRead(BaseModel):
     id: int
-    giver_id: int
-    receiver_id: int
+    giver_email: EmailStr
+    receiver_email: EmailStr
     start_date: date
     end_date: date
     description: str | None
@@ -16,8 +20,7 @@ class VacationRead(BaseModel):
 
 
 class VacationCreate(BaseModel):
-    giver_id: int
-    receiver_id: int
+    receiver_email: EmailStr
     start_date: date
     end_date: date
     description: Optional[str]

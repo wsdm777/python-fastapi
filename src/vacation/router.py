@@ -1,32 +1,59 @@
 from typing import Annotated, Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
 from sqlalchemy import insert, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from sqlalchemy.exc import IntegrityError
 from src.databasemodels import User, Vacation
 from src.user.router import get_current_superuser
 from src.database import get_async_session
 from src.vacation.schemas import (
+    MessageResponse,
     VacationCreate,
     VacationPaginationResponse,
     VacationRead,
 )
 from src.user.router import get_current_user
+from src.utils.logger import logger
 
 router = APIRouter(prefix="/vacation", tags=["vacation"])
 
 
-@router.post("/add/")
+@router.post("/add/", response_model=MessageResponse)
 async def create_new_vacation(
     user: Annotated[User, Depends(get_current_superuser)],
-    data: VacationCreate,
+    vacation: VacationCreate,
     session: AsyncSession = Depends(get_async_session),
 ):
-    stmt = insert(Vacation).values(data.model_dump())
-    await session.execute(stmt)
-    await session.commit()
-    return JSONResponse(content={"message": "vacation created"}, status_code=201)
+    try:
+        values = {**vacation.model_dump(), "giver_email": user.email}
+        stmt = insert(Vacation).values(values)
+        await session.execute(stmt)
+        await session.commit()
+
+    except IntegrityError as e:
+
+        error = str(e.orig)
+
+        if "Foreign" in error:
+            logger.info(
+                f"{user.email}: Trying to add a vacation to a non-existent user {vacation.receiver_email}"
+            )
+
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"The user with email {vacation.receiver_email} does not exist ",
+            )
+
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    logger.info(
+        f"{user.email}: Create vacation, giver = {vacation.receiver_email}, start = {vacation.start_date}, end = {vacation.end_date}"
+    )
+
+    return JSONResponse(
+        content={"message": "Vacation created"}, status_code=status.HTTP_201_CREATED
+    )
 
 
 @router.delete("/delete/{vacation_id}")
