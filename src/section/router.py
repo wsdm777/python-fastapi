@@ -2,6 +2,7 @@ from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 from sqlalchemy import delete, insert, select, update
+from src.auth.JWT import get_current_superuser, get_current_user
 from src.auth.schemas import UserTokenInfo
 from src.section.schemas import (
     MessageResponse,
@@ -10,7 +11,6 @@ from src.section.schemas import (
     SectionRead,
 )
 from src.databasemodels import Section, User
-from src.user.router import current_super_user, current_user
 from src.database import get_async_session
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
@@ -21,7 +21,7 @@ router = APIRouter(prefix="/section", tags=["section"])
 
 @router.post("/add/", response_model=MessageResponse)
 async def create_new_section(
-    user: Annotated[UserTokenInfo, Depends(current_super_user)],
+    user: Annotated[UserTokenInfo, Depends(get_current_superuser)],
     section: SectionCreate,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -57,7 +57,7 @@ async def create_new_section(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     logger.info(
-        f"{user.email}: Added new section name = {section.name}, head = {section.head_email}"
+        f"{user.email}: Added new section, name = {section.name}, head = {section.head_email}"
     )
 
     return JSONResponse(
@@ -68,7 +68,7 @@ async def create_new_section(
 
 @router.delete("/delete/{section_name}", response_model=MessageResponse)
 async def delete_section(
-    user: Annotated[UserTokenInfo, Depends(current_super_user)],
+    user: Annotated[UserTokenInfo, Depends(get_current_superuser)],
     section_name: str,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -92,7 +92,7 @@ async def delete_section(
 
 @router.patch("/update/{section_name}", response_model=MessageResponse)
 async def update_section(
-    user: Annotated[UserTokenInfo, Depends(current_super_user)],
+    user: Annotated[UserTokenInfo, Depends(get_current_superuser)],
     section: SectionCreate,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -141,7 +141,7 @@ async def update_section(
 
 @router.get("/{section_name}", response_model=SectionRead)
 async def get_section_by_name(
-    user: Annotated[UserTokenInfo, Depends(current_user)],
+    user: Annotated[UserTokenInfo, Depends(get_current_user)],
     section_name: str,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -171,7 +171,7 @@ async def get_sections(
     last_section_name: Optional[str] = Query(
         None, description="Последний на предыдущей странице"
     ),
-    user: UserTokenInfo = Depends(current_user),
+    user: UserTokenInfo = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ):
     query = select(Section)

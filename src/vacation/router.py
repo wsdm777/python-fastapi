@@ -5,21 +5,21 @@ from sqlalchemy import insert, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.databasemodels import User, Vacation
-from src.user.router import current_super_user
+from src.user.router import get_current_superuser
 from src.database import get_async_session
 from src.vacation.schemas import (
     VacationCreate,
     VacationPaginationResponse,
     VacationRead,
 )
-from src.user.router import current_user
+from src.user.router import get_current_user
 
 router = APIRouter(prefix="/vacation", tags=["vacation"])
 
 
 @router.post("/add/")
 async def create_new_vacation(
-    user: Annotated[User, Depends(current_super_user)],
+    user: Annotated[User, Depends(get_current_superuser)],
     data: VacationCreate,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -31,7 +31,7 @@ async def create_new_vacation(
 
 @router.delete("/delete/{vacation_id}")
 async def delete_vacation(
-    user: Annotated[User, Depends(current_super_user)],
+    user: Annotated[User, Depends(get_current_superuser)],
     vacation_id: int,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -45,7 +45,7 @@ async def delete_vacation(
 
 @router.get("/{vacation_id}", response_model=VacationRead)
 async def get_vacation_by_id(
-    user: Annotated[User, Depends(current_super_user)],
+    user: Annotated[User, Depends(get_current_superuser)],
     vacation_id: int,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -64,7 +64,7 @@ async def get_vacation_by_id(
 async def get_vacations(
     size: int,
     lc: Optional[int] = None,
-    user: User = Depends(current_user),
+    user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ):
     stmt = select(Vacation).order_by(Vacation.id).limit(size)
@@ -84,7 +84,7 @@ async def get_vacation_by_id(
     size: int,
     giver_id: int,
     lc: Optional[int] = None,
-    user: User = Depends(current_user),
+    user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ):
     stmt = (
@@ -108,7 +108,7 @@ async def get_vacation_to_id(
     size: int,
     receiver_id: int,
     lc: Optional[int] = None,
-    user: User = Depends(current_user),
+    user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ):
     stmt = (

@@ -20,13 +20,10 @@ from src.auth.JWT import get_current_superuser, get_current_user
 
 router = APIRouter(prefix="/user", tags=["user"])
 
-current_user = get_current_user
-current_super_user = get_current_superuser
-
 
 @router.get("/{user_email}", response_model=UserInfo)
 async def get_user_by_email(
-    user: Annotated[UserTokenInfo, Depends(current_user)],
+    user: Annotated[UserTokenInfo, Depends(get_current_user)],
     user_email: EmailStr,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -67,7 +64,7 @@ async def get_user_by_email(
 
 @router.patch("/getsuper/{user_email}", response_model=MessageResponse)
 async def update_user_access(
-    user: Annotated[UserTokenInfo, Depends(current_super_user)],
+    user: Annotated[UserTokenInfo, Depends(get_current_superuser)],
     user_email: EmailStr,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -90,7 +87,7 @@ async def update_user_access(
 
 @router.delete("/hire/{user_email}", response_model=MessageResponse)
 async def hire_user(
-    user: Annotated[UserTokenInfo, Depends(current_super_user)],
+    user: Annotated[UserTokenInfo, Depends(get_current_superuser)],
     user_email: EmailStr,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -131,7 +128,7 @@ async def get_users(
     on_vacation_only: Optional[bool] = Query(
         None, description="Фильтр пользователей в отпуске (True/False)"
     ),
-    user: UserTokenInfo = Depends(current_user),
+    user: UserTokenInfo = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ):
     query = (
@@ -224,7 +221,7 @@ async def get_users(
     "/new_position/{user_email}/{position_name}", response_model=MessageResponse
 )
 async def update_user_position(
-    user: Annotated[UserTokenInfo, Depends(current_super_user)],
+    user: Annotated[UserTokenInfo, Depends(get_current_superuser)],
     user_email: EmailStr,
     position_name: str,
     session: AsyncSession = Depends(get_async_session),

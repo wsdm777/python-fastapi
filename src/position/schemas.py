@@ -1,9 +1,13 @@
 from pydantic import BaseModel
 
 
+class MessageResponse(BaseModel):
+    Message: str
+
+
 class PositionRead(BaseModel):
     id: int
-    section_id: int
+    section_name: str
     name: str
 
     class Config:
@@ -11,7 +15,7 @@ class PositionRead(BaseModel):
 
 
 class PositionCreate(BaseModel):
-    section_id: int
+    section_name: str
     name: str
 
 
