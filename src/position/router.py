@@ -1,5 +1,5 @@
 from typing import Annotated, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 from sqlalchemy import insert, select, update, delete
 from src.auth.JWT import get_current_superuser, get_current_user
@@ -156,44 +156,59 @@ async def get_position_by_name(
     return PositionRead.model_validate(result)
 
 
-@router.get("/all/", response_model=PositionPaginationResponse)
+@router.get("/list/", response_model=PositionPaginationResponse)
 async def get_position(
-    size: int,
-    lc: Optional[int] = None,
+    desc: bool = Query(False, description="Тип сортировки"),
+    filter_name: Optional[str] = Query(None, description="Должность"),
+    page_size: int = Query(10, ge=1, le=100, description="Размер страницы"),
+    last_position_name: Optional[str] = Query(
+        None, description="Последняя должность на предыдущей странице"
+    ),
+    section: Optional[str] = Query(None, description="Отдел"),
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ):
-    stmt = select(Position).order_by(Position.id).limit(size)
-    if lc:
-        stmt = stmt.filter(Position.id > lc)
+    log = f"{user.email}: Selected positions with params pg_size = {page_size}, desc = {desc}"
 
-    results = await session.execute(stmt)
+    query = select(Position)
+
+    query = (
+        query.order_by(Position.name.desc()) if desc else query.order_by(Position.name)
+    )
+
+    if section:
+        log += f", section = {section}"
+        query = query.filter(Position.section_name == section)
+
+    if last_position_name:
+        log += f", last_name = {last_position_name}"
+
+        cursor_filter = (
+            (Position.name < last_position_name)
+            if desc
+            else (Position.name > last_position_name)
+        )
+        query = query.filter(cursor_filter)
+
+    if filter_name:
+        log += f", filter name = {filter_name}"
+        query = query.filter(Position.name.ilike(f"%{filter_name}%"))
+
+    query = query.limit(page_size + 1)
+
+    results = await session.execute(query)
     results = results.scalars().all()
     positions = [PositionRead.model_validate(position) for position in results]
-    last_id = positions[-1].id if positions else None
 
-    return PositionPaginationResponse(items=positions, next_cursor=last_id, size=size)
+    is_final = False if len(results) > page_size else True
 
+    now_last_name = None if is_final else positions[-2].name
 
-@router.get("/all/to/{section}", response_model=PositionPaginationResponse)
-async def get_position_to_section(
-    size: int,
-    section_id: int,
-    lc: Optional[int] = None,
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_async_session),
-):
-    stmt = (
-        select(Position)
-        .order_by(Position.id)
-        .limit(size)
-        .filter(Position.section_id == section_id)
+    logger.info(log)
+
+    return PositionPaginationResponse(
+        items=positions[:page_size],
+        last_position_name=now_last_name,
+        final=is_final,
+        size=page_size,
     )
-    if lc:
-        stmt = stmt.filter(Position.id > lc)
-    results = await session.execute(stmt)
-    results = results.scalars().all()
-    vacations = [PositionRead.model_validate(vacation) for vacation in results]
-    last_id = vacations[-1].id if vacations else None
-
-    return PositionPaginationResponse(items=vacations, next_cursor=last_id, size=size)

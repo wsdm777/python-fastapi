@@ -21,5 +21,6 @@ class PositionCreate(BaseModel):
 
 class PositionPaginationResponse(BaseModel):
     items: list[PositionRead]
-    next_cursor: int | None
+    last_position_name: str | None
+    final: bool
     size: int
