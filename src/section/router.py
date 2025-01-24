@@ -92,10 +92,10 @@ async def delete_section(
     )
 
 
-@router.patch("/update/{section_name}", response_model=MessageResponse)
+@router.patch("/update/", response_model=MessageResponse)
 async def update_section(
     user: Annotated[UserTokenInfo, Depends(get_current_superuser)],
-    section: SectionCreate,
+    section: SectionCreate = Query(),
     session: AsyncSession = Depends(get_async_session),
 ):
     try:
@@ -154,14 +154,14 @@ async def get_section_by_name(
 
     if result is None:
         logger.info(
-            f"{user.email}: Trying to delete non-existent section {section_name}"
+            f"{user.email}: Trying to select a non-existent section {section_name}"
         )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Section {section_name} not found",
         )
 
-    logger.info(f"{user.email}: Delete section {section_name}")
+    logger.info(f"{user.email}: Select info of section {section_name}")
     return SectionRead.model_validate(result)
 
 

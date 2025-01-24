@@ -42,7 +42,7 @@ async def get_user_by_email(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
-    logger.info(f"{user.email}: Selected info user {user_email}")
+    logger.info(f"{user.email}: Selected info  of user {user_email}")
     user, position_name, section_name = result
     on_vacation = False
     for vacation in user.receiver_vacations:

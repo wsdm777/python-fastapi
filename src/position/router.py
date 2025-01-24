@@ -133,20 +133,26 @@ async def update_position(
     )
 
 
-@router.get("/{position_id}", response_model=PositionRead)
-async def get_position_by_id(
+@router.get("/{position_name}", response_model=PositionRead)
+async def get_position_by_name(
     user: Annotated[User, Depends(get_current_user)],
-    position_id: int,
+    position_name: str,
     session: AsyncSession = Depends(get_async_session),
 ):
-    stmt = select(Position).where(Position.id == position_id)
-    result = await session.execute(stmt)
+    query = select(Position).filter(Position.name == position_name)
+    result = await session.execute(query)
 
     result = result.scalars().one_or_none()
 
     if result is None:
-        raise HTTPException(status_code=404, detail="Position not found")
+        logger.info(
+            f"{user.email}: Trying to select a non-existent position {position_name}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Position not found"
+        )
 
+    logger.info(f"{user.email}: Select info of position {position_name}")
     return PositionRead.model_validate(result)
 
 
