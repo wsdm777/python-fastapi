@@ -43,6 +43,8 @@ class Vacation(Base):
     __table_args__ = (
         Index("ix_vacation_receiver_id", receiver_email),
         Index("ix_vacation_giver_id", giver_email),
+        Index("ix_vacation_start_date", start_date),
+        Index("ix_vacation_end_date", end_date),
         Index("ix_vacation_dates", start_date, end_date),
     )
 
@@ -58,9 +60,6 @@ class Section(Base):
         nullable=True,
     )
 
-    head = relationship(
-        "User", back_populates="section_headed", foreign_keys=[head_email]
-    )
     __table_args__ = (Index("ix_section_head_email", head_email),)
 
 
@@ -78,7 +77,6 @@ class Position(Base):
     )
     name: Mapped[str] = mapped_column(nullable=False, unique=True, index=True)
 
-    user = relationship("User", back_populates="position")
     __table_args__ = (Index("ix_position_section_name", section_name),)
 
 
@@ -101,10 +99,6 @@ class User(SQLAlchemyBaseUserTable[int], Base):
     is_superuser: Mapped[bool] = mapped_column(default=False)
     joined_at = mapped_column(Date, default=date.today)
     birthday = mapped_column(Date)
-
-    position = relationship("Position", back_populates="user")
-
-    section_headed = relationship("Section", back_populates="head")
 
     given_vacations = relationship(
         "Vacation", back_populates="giver", foreign_keys=[Vacation.giver_email]
