@@ -1,11 +1,13 @@
-from typing import Annotated, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from datetime import date
+from typing import Annotated, Literal, Optional
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
-from sqlalchemy import insert, delete, select
+from pydantic import EmailStr
+from sqlalchemy import and_, insert, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 from src.databasemodels import User, Vacation
-from src.user.router import get_current_superuser
+from src.user.router import get_current_superuser, get_current_user
 from src.database import get_async_session
 from src.vacation.schemas import (
     MessageResponse,
@@ -13,7 +15,6 @@ from src.vacation.schemas import (
     VacationPaginationResponse,
     VacationRead,
 )
-from src.user.router import get_current_user
 from src.utils.logger import logger
 
 router = APIRouter(prefix="/vacation", tags=["vacation"])
@@ -56,99 +57,94 @@ async def create_new_vacation(
     )
 
 
-@router.delete("/delete/{vacation_id}")
-async def delete_vacation(
-    user: Annotated[User, Depends(get_current_superuser)],
-    vacation_id: int,
-    session: AsyncSession = Depends(get_async_session),
-):
-    stmt = delete(Vacation).where(Vacation.id == vacation_id)
-    result = await session.execute(stmt)
-    await session.commit()
-    if result.rowcount == 0:
-        raise HTTPException(status_code=404, detail="Vacation not found")
-    return JSONResponse(content={"message": "Vacation deleted"}, status_code=200)
-
-
 @router.get("/{vacation_id}", response_model=VacationRead)
 async def get_vacation_by_id(
-    user: Annotated[User, Depends(get_current_superuser)],
+    user: Annotated[User, Depends(get_current_user)],
     vacation_id: int,
     session: AsyncSession = Depends(get_async_session),
 ):
-    stmt = select(Vacation).where(Vacation.id == vacation_id)
+    stmt = select(Vacation).filter(Vacation.id == vacation_id)
     result = await session.execute(stmt)
 
     result = result.scalars().one_or_none()
 
     if result is None:
-        raise HTTPException(status_code=404, detail="Vacation not found")
+        logger.info(
+            f"{user.email}: Trying to select a non-existent vacation {vacation_id}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Vacation not found"
+        )
 
+    logger.info(f"{user.email}: Select info of vacation {vacation_id}")
     return VacationRead.model_validate(result)
 
 
-@router.get("/all/", response_model=VacationPaginationResponse)
+@router.get("/list/", response_model=VacationPaginationResponse)
 async def get_vacations(
-    size: int,
-    lc: Optional[int] = None,
+    desc: bool = Query(False, description="Тип сортировки"),
+    page_size: int = Query(10, ge=1, le=100, description="Размер страницы"),
+    last_vacation_id: Optional[int] = Query(
+        None, description="Последняя запись на предыдущей странице"
+    ),
+    status: Optional[Literal["active", "future", "past"]] = Query(
+        None,
+        description="Фильтр по статусу отпуска: active (активные), future (будущие), past (прошедшие)",
+    ),
+    receiver_email: Optional[EmailStr] = Query(None),
+    giver_email: Optional[EmailStr] = Query(None),
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ):
-    stmt = select(Vacation).order_by(Vacation.id).limit(size)
-    if lc:
-        stmt = stmt.filter(Vacation.id > lc)
+    log = f"{user.email}: Selected vacations with params pg_size = {page_size}, desc = {desc}"
 
-    results = await session.execute(stmt)
+    query = select(Vacation)
+
+    query = query.order_by(Vacation.id.desc()) if desc else query.order_by(Vacation.id)
+
+    if last_vacation_id:
+        log += f", last_id = {last_vacation_id}"
+
+        cursor_filter = (
+            (Vacation.id < last_vacation_id)
+            if desc
+            else (Vacation.id > last_vacation_id)
+        )
+        query = query.filter(cursor_filter)
+
+    if receiver_email is not None:
+        log += f", receiver_email = {receiver_email}"
+        query = query.filter(Vacation.receiver_email == receiver_email)
+
+    if giver_email is not None:
+        log += f", giver_email = {giver_email}"
+        query = query.filter(Vacation.giver_email == giver_email)
+
+    if status is not None:
+        log += f", status = {status}"
+        today = date.today()
+
+        if status == "active":
+            query = query.filter(
+                and_(Vacation.start_date <= today, Vacation.end_date >= today)
+            )
+        elif status == "future":
+            query = query.filter(Vacation.start_date > today)
+        elif status == "past":
+            query = query.filter(Vacation.end_date < today)
+
+    query = query.limit(page_size + 1)
+
+    results = await session.execute(query)
     results = results.scalars().all()
     vacations = [VacationRead.model_validate(vacation) for vacation in results]
-    last_id = vacations[-1].id if vacations else None
 
-    return VacationPaginationResponse(items=vacations, next_cursor=last_id, size=size)
+    logger.info(log)
 
+    is_final = False if len(results) > page_size else True
 
-@router.get("/all/by/{giver_id}", response_model=VacationPaginationResponse)
-async def get_vacation_by_id(
-    size: int,
-    giver_id: int,
-    lc: Optional[int] = None,
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_async_session),
-):
-    stmt = (
-        select(Vacation)
-        .order_by(Vacation.id)
-        .limit(size)
-        .filter(Vacation.giver_id == giver_id)
+    now_last_id = None if is_final else vacations[-2].id
+
+    return VacationPaginationResponse(
+        items=vacations[:page_size], last_id=now_last_id, final=is_final, size=page_size
     )
-    if lc:
-        stmt = stmt.filter(Vacation.id > lc)
-    results = await session.execute(stmt)
-    results = results.scalars().all()
-    vacations = [VacationRead.model_validate(vacation) for vacation in results]
-    last_id = vacations[-1].id if vacations else None
-
-    return VacationPaginationResponse(items=vacations, next_cursor=last_id, size=size)
-
-
-@router.get("/all/to/{receiver_id}", response_model=VacationPaginationResponse)
-async def get_vacation_to_id(
-    size: int,
-    receiver_id: int,
-    lc: Optional[int] = None,
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_async_session),
-):
-    stmt = (
-        select(Vacation)
-        .order_by(Vacation.id)
-        .limit(size)
-        .filter(Vacation.receiver_id == receiver_id)
-    )
-    if lc:
-        stmt = stmt.filter(Vacation.id > lc)
-    results = await session.execute(stmt)
-    results = results.scalars().all()
-    vacations = [VacationRead.model_validate(vacation) for vacation in results]
-    last_id = vacations[-1].id if vacations else None
-
-    return VacationPaginationResponse(items=vacations, next_cursor=last_id, size=size)
