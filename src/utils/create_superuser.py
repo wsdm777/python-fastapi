@@ -20,32 +20,21 @@ async def create_user(user_manager: UserManager, user_create: UserCreate):
     return user
 
 
-default_name = "Danya"
-default_surname = "Zolik"
-default_position_name = None
-default_email = "root@example.com"
-default_password = SUPER_USER_PASSWORD
-default_is_active = True
-default_is_superuser = True
-default_is_verified = True
-default_birthday = date.today()
-
-
 async def create_superuser(
-    name: str = default_name,
-    surname: str = default_surname,
-    position_name: int = default_position_name,
-    email: EmailStr = default_email,
-    password: str = default_password,
-    is_active: bool = default_is_active,
-    is_superuser: bool = default_is_superuser,
-    is_verified: bool = default_is_verified,
-    birthday: date = default_birthday,
+    name: str = "Danya",
+    surname: str = "Zolik",
+    position_id: int = None,
+    email: EmailStr = "root@example.com",
+    password: str = SUPER_USER_PASSWORD,
+    is_active: bool = True,
+    is_superuser: bool = True,
+    is_verified: bool = True,
+    birthday: date = date.today(),
 ):
     user_create = UserCreate(
         name=name,
         surname=surname,
-        position_name=position_name,
+        position_id=position_id,
         email=email,
         password=password,
         is_active=is_active,
@@ -60,9 +49,8 @@ async def create_superuser(
                     query = select(User.id).filter(User.is_superuser == True).limit(1)
                     result = await session.execute(query)
                     if result.scalar() is None:
-                        user = await create_user(
+                        await create_user(
                             user_manager=user_manager, user_create=user_create
                         )
-                        return user
     except UserAlreadyExists:
         ...

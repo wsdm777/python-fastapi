@@ -178,7 +178,7 @@ async def get_position(
 
     if section:
         log += f", section = {section}"
-        query = query.filter(Position.section_name == section)
+        query = query.filter(Position.section_id == section)
 
     if last_position_name:
         log += f", last_name = {last_position_name}"

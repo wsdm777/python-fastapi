@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 from pydantic import EmailStr
 from sqlalchemy import and_, case, delete, exists, func, select, tuple_, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload, aliased
 from src.auth.schemas import UserTokenInfo
@@ -29,8 +30,8 @@ async def get_user_by_email(
 ):
     query = (
         select(User, Position.name, Section.name)
-        .outerjoin(Position, User.position_name == Position.name)
-        .outerjoin(Section, Position.section_name == Section.name)
+        .outerjoin(Position, User.position_id == Position.id)
+        .outerjoin(Section, Position.section_id == Section.id)
         .options(selectinload(User.receiver_vacations))
         .filter(User.email == user_email)
     )
@@ -42,7 +43,7 @@ async def get_user_by_email(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
-    logger.info(f"{user.email}: Selected info  of user {user_email}")
+    logger.info(f"{user.email}: Selected info of user {user_email}")
     user, position_name, section_name = result
     on_vacation = False
     for vacation in user.receiver_vacations:
@@ -155,8 +156,8 @@ async def get_users(
                 )
             ).label("is_on_vacation"),
         )
-        .outerjoin(Vacation, User.email == Vacation.receiver_email)
-        .outerjoin(Position, User.position_name == Position.name)
+        .outerjoin(Vacation, User.email == Vacation.receiver_id)
+        .outerjoin(Position, User.position_id == Position.id)
         .group_by(User, Position.name)
     )
 
@@ -187,7 +188,7 @@ async def get_users(
             and_(
                 aliasVac.start_date <= date.today(),
                 aliasVac.end_date >= date.today(),
-                aliasVac.receiver_email == User.email,
+                aliasVac.receiver_id == User.id,
             )
         )
         query = query.filter(vacation_filter if on_vacation_only else ~vacation_filter)
@@ -224,24 +225,40 @@ async def get_users(
 
 
 @router.patch(
-    "/new_position/{user_email}/{position_name}", response_model=MessageResponse
+    "/new_position/{user_email}/{position_id}", response_model=MessageResponse
 )
 async def update_user_position(
     user: Annotated[UserTokenInfo, Depends(get_current_superuser)],
     user_email: EmailStr,
-    position_name: str,
+    position_id: int,
     session: AsyncSession = Depends(get_async_session),
 ):
-    stmt = (
-        update(User)
-        .filter(User.email == user_email)
-        .values(position_name=position_name)
-    )
-    result = await session.execute(stmt)
-    await session.commit()
+    try:
+        stmt = (
+            update(User)
+            .filter(User.email == user_email)
+            .values(position_id=position_id)
+        )
+        result = await session.execute(stmt)
+        await session.commit()
+    except IntegrityError as e:
+
+        error = str(e.orig)
+
+        if "Foreign" in error:
+            logger.info(
+                f"{user.email}: Trying to give user {user.email} a non-existent position with id = {position_id}"
+            )
+
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"The position with id {position_id} does not exist ",
+            )
+
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     if result.rowcount == 0:
-        logger.info(f"{user.email}: Trying to update non-existing user {user_email}")
+        logger.info(f"{user.email}: Trying to update non-existent user {user_email}")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )

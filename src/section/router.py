@@ -10,10 +10,11 @@ from src.section.schemas import (
     SectionPaginationResponse,
     SectionRead,
 )
-from src.databasemodels import Section
+from src.databasemodels import Section, User
 from src.database import get_async_session
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import joinedload
 from src.utils.logger import logger
 
 router = APIRouter(prefix="/section", tags=["section"])
@@ -46,18 +47,18 @@ async def create_new_section(
 
         if "Foreign" in error:
             logger.info(
-                f"{user.email}: Trying to add a section with a non-existent head {section.head_email}"
+                f"{user.email}: Trying to add a section with a non-existent user id = {section.head_id}"
             )
 
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"The user with email {section.head_email} does not exist ",
+                detail=f"The user with id {section.head_id} does not exist ",
             )
 
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     logger.info(
-        f"{user.email}: Added new section, name = {section.name}, head = {section.head_email}"
+        f"{user.email}: Added new section, name = {section.name}, head = {section.head_id}"
     )
 
     return JSONResponse(
@@ -92,7 +93,7 @@ async def delete_section(
     )
 
 
-@router.patch("/update/", response_model=MessageResponse)
+@router.put("/update/", response_model=MessageResponse)
 async def update_section(
     user: Annotated[UserTokenInfo, Depends(get_current_superuser)],
     section: SectionCreate = Query(),
@@ -102,7 +103,7 @@ async def update_section(
         stmt = (
             update(Section)
             .filter(Section.name == section.name)
-            .values(head_email=section.head_email)
+            .values(head_email=section.head_id)
         )
         result = await session.execute(stmt)
         await session.commit()
@@ -114,12 +115,12 @@ async def update_section(
         if "Foreign" in error:
 
             logger.info(
-                f"{user.email}: Trying to change head of section {section.name} to non-existent user {section.head_email}"
+                f"{user.email}: Trying to change head of section {section.name} to non-existent user id = {section.head_id}"
             )
 
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"The user with email {section.head_email} does not exist ",
+                detail=f"The user with id {section.head_id} does not exist ",
             )
 
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -134,7 +135,7 @@ async def update_section(
         )
 
     logger.info(
-        f"{user.email}: Change section {section.name} head to {section.head_email}"
+        f"{user.email}: Change section {section.name} head to {section.head_id}"
     )
     return JSONResponse(
         content={"message": "Section update"}, status_code=status.HTTP_200_OK
@@ -147,12 +148,16 @@ async def get_section_by_name(
     section_name: str,
     session: AsyncSession = Depends(get_async_session),
 ):
-    query = select(Section).filter(Section.name == section_name)
-    result = await session.execute(query)
+    query = (
+        select(Section)
+        .options(joinedload(Section.head).load_only(User.email))
+        .filter(Section.name == section_name)
+    )
+    section = await session.execute(query)
 
-    result = result.scalars().one_or_none()
+    section = section.scalars().one_or_none()
 
-    if result is None:
+    if section is None:
         logger.info(
             f"{user.email}: Trying to select a non-existent section {section_name}"
         )
@@ -162,7 +167,7 @@ async def get_section_by_name(
         )
 
     logger.info(f"{user.email}: Select info of section {section_name}")
-    return SectionRead.model_validate(result)
+    return SectionRead(id=section.id, name=section.name, head_email=section.head)
 
 
 @router.get("/list/", response_model=SectionPaginationResponse)
@@ -192,7 +197,7 @@ async def get_sections(
             if desc
             else (Section.name > last_section_name)
         )
-        query.filter(cursor_filter)
+        query = query.filter(cursor_filter)
 
     if filter_name:
         log += f", filter name = {filter_name}"

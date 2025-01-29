@@ -5,7 +5,6 @@ from src.user.router import get_current_superuser
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from src.auth.authentification import fastapi_users, auth_backend
-from fastapi.routing import APIRoute
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -16,7 +15,7 @@ router.include_router(
 
 auth_router = fastapi_users.get_auth_router(auth_backend)
 
-auth_router.routes = [auth_router.routes[0]]
+auth_router.routes = [auth_router.routes[0]]  # Только login route
 
 router.include_router(auth_router)
 

@@ -38,5 +38,5 @@ class VacationCreate(BaseModel):
 
 class VacationPaginationResponse(BaseModel):
     items: list[VacationRead]
-    next_cursor: int | None
+    last_id: int | None
     size: int

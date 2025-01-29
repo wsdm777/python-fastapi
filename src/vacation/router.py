@@ -3,7 +3,7 @@ from typing import Annotated, Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 from pydantic import EmailStr
-from sqlalchemy import and_, insert, delete, select
+from sqlalchemy import and_, insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 from src.databasemodels import User, Vacation
@@ -114,11 +114,11 @@ async def get_vacations(
 
     if receiver_email is not None:
         log += f", receiver_email = {receiver_email}"
-        query = query.filter(Vacation.receiver_email == receiver_email)
+        query = query.filter(Vacation.receiver_id == receiver_email)
 
     if giver_email is not None:
         log += f", giver_email = {giver_email}"
-        query = query.filter(Vacation.giver_email == giver_email)
+        query = query.filter(Vacation.giver_id == giver_email)
 
     if status is not None:
         log += f", status = {status}"

@@ -14,8 +14,11 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
         user: User,
         request: Optional[Request] = None,
     ) -> None:
-        creator = get_current_superuser(request=request)
-        logger.info(f"{creator.email}: User {user.email} registered")
+        if user.email == "root@example.com":
+            logger.info("Root user created")
+        else:
+            creator = get_current_superuser(request=request)
+            logger.info(f"{creator.email}: User {user.email} registered")
 
     async def on_after_login(
         self,

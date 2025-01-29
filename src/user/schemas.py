@@ -12,7 +12,7 @@ class UserRead(schemas.BaseUser[int]):
     id: int
     name: str
     surname: str
-    position_name: int | None
+    position_id: int | None
     email: EmailStr
     joined_at: date
     birthday: date
@@ -24,7 +24,7 @@ class UserRead(schemas.BaseUser[int]):
 class UserCreate(schemas.BaseUserCreate):
     name: str
     surname: str
-    position_name: str | None = None
+    position_id: int | None = None
     email: EmailStr
     password: str
     is_active: Optional[bool] = True
@@ -43,36 +43,6 @@ class UserCreate(schemas.BaseUserCreate):
         if birthdate > date.today():
             raise ValueError("Birthday cant be in the future")
         return value
-
-
-class UserOnVacation(BaseModel):
-    id: int
-    name: str
-    surname: str
-    position_id: int | None
-    email: EmailStr
-    end_date: date
-
-
-class UserPaginationAllVacationResponse(BaseModel):
-    items: list[UserOnVacation]
-    next_cursor: int | None
-    size: int
-
-
-class UserNotOnVacation(BaseModel):
-    id: int
-    name: str
-    surname: str
-    position_id: int | None
-    email: EmailStr
-    start_date: date | None
-
-
-class UserPaginationAllNotVacationResponse(BaseModel):
-    items: list[UserNotOnVacation]
-    next_cursor: int | None
-    size: int
 
 
 class UserPagination(BaseModel):

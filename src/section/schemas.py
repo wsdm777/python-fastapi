@@ -16,7 +16,7 @@ class SectionRead(BaseModel):
 
 class SectionCreate(BaseModel):
     name: str
-    head_email: EmailStr = None
+    head_id: int = None
 
 
 class SectionPaginationResponse(BaseModel):

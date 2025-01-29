@@ -10,18 +10,18 @@ class Base(DeclarativeBase): ...
 class Vacation(Base):
     __tablename__ = "vacation"
     id: Mapped[int] = mapped_column(primary_key=True)
-    giver_email: Mapped[str] = mapped_column(
+    giver_id: Mapped[int] = mapped_column(
         ForeignKey(
-            "user.email",
+            "user.id",
             use_alter=True,
             name="fk_vacation_giv_user",
             ondelete="SET NULL",
         ),
         nullable=True,
     )
-    receiver_email: Mapped[str] = mapped_column(
+    receiver_id: Mapped[int] = mapped_column(
         ForeignKey(
-            "user.email",
+            "user.id",
             use_alter=True,
             name="fk_vacation_rev_user",
             ondelete="CASCADE",
@@ -33,16 +33,16 @@ class Vacation(Base):
     description: Mapped[str] = mapped_column(nullable=True)
 
     giver = relationship(
-        "User", back_populates="given_vacations", foreign_keys=[giver_email]
+        "User", back_populates="given_vacations", foreign_keys=[giver_id]
     )
 
     receiver = relationship(
-        "User", back_populates="receiver_vacations", foreign_keys=[receiver_email]
+        "User", back_populates="receiver_vacations", foreign_keys=[receiver_id]
     )
 
     __table_args__ = (
-        Index("ix_vacation_receiver_id", receiver_email),
-        Index("ix_vacation_giver_id", giver_email),
+        Index("ix_vacation_receiver_id", receiver_id),
+        Index("ix_vacation_giver_id", giver_id),
         Index("ix_vacation_start_date", start_date),
         Index("ix_vacation_end_date", end_date),
         Index("ix_vacation_dates", start_date, end_date),
@@ -53,22 +53,24 @@ class Section(Base):
     __tablename__ = "section"
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(nullable=False, index=True, unique=True)
-    head_email: Mapped[str] = mapped_column(
+    head_id: Mapped[int] = mapped_column(
         ForeignKey(
-            "user.email", use_alter=True, name="fk_section_user", ondelete="SET NULL"
+            "user.id", use_alter=True, name="fk_section_user", ondelete="SET NULL"
         ),
         nullable=True,
     )
 
-    __table_args__ = (Index("ix_section_head_email", head_email),)
+    head = relationship("User")
+
+    __table_args__ = (Index("ix_section_head_email", head_id),)
 
 
 class Position(Base):
     __tablename__ = "position"
     id: Mapped[int] = mapped_column(primary_key=True)
-    section_name: Mapped[str] = mapped_column(
+    section_id: Mapped[int] = mapped_column(
         ForeignKey(
-            "section.name",
+            "section.id",
             use_alter=True,
             name="fk_position_section",
             ondelete="CASCADE",
@@ -77,7 +79,7 @@ class Position(Base):
     )
     name: Mapped[str] = mapped_column(nullable=False, unique=True, index=True)
 
-    __table_args__ = (Index("ix_position_section_name", section_name),)
+    __table_args__ = (Index("ix_position_section_name", section_id),)
 
 
 class User(SQLAlchemyBaseUserTable[int], Base):
@@ -85,9 +87,9 @@ class User(SQLAlchemyBaseUserTable[int], Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(nullable=False)
     surname: Mapped[str] = mapped_column(nullable=False)
-    position_name: Mapped[str] = mapped_column(
+    position_id: Mapped[str] = mapped_column(
         ForeignKey(
-            "position.name",
+            "position.id",
             use_alter=True,
             name="fk_user_position",
             ondelete="SET NULL",
@@ -101,14 +103,14 @@ class User(SQLAlchemyBaseUserTable[int], Base):
     birthday = mapped_column(Date)
 
     given_vacations = relationship(
-        "Vacation", back_populates="giver", foreign_keys=[Vacation.giver_email]
+        "Vacation", back_populates="giver", foreign_keys=[Vacation.giver_id]
     )
     receiver_vacations = relationship(
         "Vacation",
         back_populates="receiver",
-        foreign_keys="Vacation.receiver_email",
+        foreign_keys=[Vacation.receiver_id],
     )
     __table_args__ = (
-        Index("ix_user_position_name", position_name),
+        Index("ix_user_position_name", position_id),
         Index("ix_user_surname_name", surname, name),
     )
