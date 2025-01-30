@@ -1,10 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from fastapi.routing import APIRoute
-from src.auth.authentification import fastapi_users, auth_backend
 from src.user.router import router as userRouter
 from src.auth.router import router as regRouter
-
 from src.vacation.router import router as vacRouter
 from src.position.router import router as posRouter
 from src.section.router import router as secRouter

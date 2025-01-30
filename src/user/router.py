@@ -32,7 +32,7 @@ async def get_user_by_email(
         select(User, Position.name, Section.name)
         .outerjoin(Position, User.position_id == Position.id)
         .outerjoin(Section, Position.section_id == Section.id)
-        .options(selectinload(User.receiver_vacations))
+        .options(selectinload(User.receiven_vacations))
         .filter(User.email == user_email)
     )
 
@@ -46,7 +46,7 @@ async def get_user_by_email(
     logger.info(f"{user.email}: Selected info of user {user_email}")
     user, position_name, section_name = result
     on_vacation = False
-    for vacation in user.receiver_vacations:
+    for vacation in user.receiven_vacations:
         if vacation.start_date <= date.today() <= vacation.end_date:
             on_vacation = True
     return UserInfo(
@@ -141,6 +141,7 @@ async def get_users(
             User.id,
             User.name,
             User.surname,
+            User.is_superuser,
             User.email,
             Position.name,
             func.bool_or(
@@ -156,7 +157,7 @@ async def get_users(
                 )
             ).label("is_on_vacation"),
         )
-        .outerjoin(Vacation, User.email == Vacation.receiver_id)
+        .outerjoin(Vacation, User.id == Vacation.receiver_id)
         .outerjoin(Position, User.position_id == Position.id)
         .group_by(User, Position.name)
     )
@@ -180,7 +181,7 @@ async def get_users(
     if filter_surname:
         log += f", filter surname = {filter_surname}"
 
-        query = query.filter(User.surname.ilike(f"%{filter_surname}%"))
+        query = query.filter(User.surname.ilike(f"{filter_surname}%"))
 
     if on_vacation_only is not None:
         aliasVac = aliased(Vacation)
@@ -202,11 +203,12 @@ async def get_users(
             id=user_id,
             name=user_name,
             surname=user_surname,
+            is_admin=user_is_admin,
             position_name=position_name,
             email=user_email,
             on_vacation=is_on_vacation,
         )
-        for user_id, user_name, user_surname, user_email, position_name, is_on_vacation in results
+        for user_id, user_name, user_surname, user_is_admin, user_email, position_name, is_on_vacation in results
     ]
 
     is_final = False if len(results) > page_size else True

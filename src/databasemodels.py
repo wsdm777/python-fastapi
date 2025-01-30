@@ -37,7 +37,7 @@ class Vacation(Base):
     )
 
     receiver = relationship(
-        "User", back_populates="receiver_vacations", foreign_keys=[receiver_id]
+        "User", back_populates="receiven_vacations", foreign_keys=[receiver_id]
     )
 
     __table_args__ = (
@@ -79,6 +79,8 @@ class Position(Base):
     )
     name: Mapped[str] = mapped_column(nullable=False, unique=True, index=True)
 
+    section = relationship("Section")
+
     __table_args__ = (Index("ix_position_section_name", section_id),)
 
 
@@ -105,7 +107,7 @@ class User(SQLAlchemyBaseUserTable[int], Base):
     given_vacations = relationship(
         "Vacation", back_populates="giver", foreign_keys=[Vacation.giver_id]
     )
-    receiver_vacations = relationship(
+    receiven_vacations = relationship(
         "Vacation",
         back_populates="receiver",
         foreign_keys=[Vacation.receiver_id],

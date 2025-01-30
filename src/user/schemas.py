@@ -49,6 +49,7 @@ class UserPagination(BaseModel):
     id: int
     name: str
     surname: str
+    is_admin: bool
     position_name: str | None
     email: EmailStr
     on_vacation: bool

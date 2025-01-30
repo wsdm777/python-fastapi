@@ -21,9 +21,6 @@ class CustomJWTStrategy(JWTStrategy):
             user_data, self.encode_key, self.lifetime_seconds, algorithm=self.algorithm
         )
 
-    async def destroy_token(self, token: str, user: User) -> None:
-        pass
-
 
 def get_user_email(request: Request, superuser: bool = False) -> dict:
     token = request.cookies.get("authcook")
@@ -38,9 +35,10 @@ def get_user_email(request: Request, superuser: bool = False) -> dict:
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JWT token"
         )
 
+    id = payload.get("sub")
     email = payload.get("email")
     is_superuser = payload.get("admin")
-    return UserTokenInfo(email=email, is_superuser=is_superuser)
+    return UserTokenInfo(id=id, email=email, is_superuser=is_superuser)
 
 
 def get_current_user(request: Request) -> UserTokenInfo:

@@ -2,6 +2,9 @@ from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 from sqlalchemy import delete, insert, select, update
+from sqlalchemy.orm import joinedload
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 from src.auth.JWT import get_current_superuser, get_current_user
 from src.auth.schemas import UserTokenInfo
 from src.section.schemas import (
@@ -12,9 +15,6 @@ from src.section.schemas import (
 )
 from src.databasemodels import Section, User
 from src.database import get_async_session
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import joinedload
 from src.utils.logger import logger
 
 router = APIRouter(prefix="/section", tags=["section"])
@@ -103,7 +103,7 @@ async def update_section(
         stmt = (
             update(Section)
             .filter(Section.name == section.name)
-            .values(head_email=section.head_id)
+            .values(head_id=section.head_id)
         )
         result = await session.execute(stmt)
         await session.commit()
@@ -167,7 +167,11 @@ async def get_section_by_name(
         )
 
     logger.info(f"{user.email}: Select info of section {section_name}")
-    return SectionRead(id=section.id, name=section.name, head_email=section.head)
+    return SectionRead(
+        id=section.id,
+        name=section.name,
+        head_email=section.head.email if section.head else None,
+    )
 
 
 @router.get("/list/", response_model=SectionPaginationResponse)
@@ -183,7 +187,7 @@ async def get_sections(
 ):
     log = f"{user.email}: Selected sections with params pg_size = {page_size}, desc = {desc}"
 
-    query = select(Section)
+    query = select(Section).options(joinedload(Section.head).load_only(User.email))
 
     query = (
         query.order_by(Section.name.desc()) if desc else query.order_by(Section.name)
@@ -202,13 +206,20 @@ async def get_sections(
     if filter_name:
         log += f", filter name = {filter_name}"
 
-        query = query.filter(Section.name.ilike(f"%{filter_name}%"))
+        query = query.filter(Section.name.ilike(f"{filter_name}%"))
 
     query = query.limit(page_size + 1)
 
     results = await session.execute(query)
     results = results.scalars().all()
-    sections = [SectionRead.model_validate(section) for section in results]
+    sections = [
+        SectionRead(
+            id=section.id,
+            name=section.name,
+            head_email=section.head.email if section.head else None,
+        )
+        for section in results
+    ]
 
     is_final = False if len(results) > page_size else True
 
