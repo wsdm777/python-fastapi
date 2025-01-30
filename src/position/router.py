@@ -2,6 +2,9 @@ from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 from sqlalchemy import insert, select, update, delete
+from sqlalchemy.orm import joinedload
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 from src.auth.JWT import get_current_superuser, get_current_user
 from src.position.schemas import (
     MessageResponse,
@@ -9,10 +12,8 @@ from src.position.schemas import (
     PositionPaginationResponse,
     PositionRead,
 )
-from src.databasemodels import Position, User
+from src.databasemodels import Position, Section, User
 from src.database import get_async_session
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.exc import IntegrityError
 from src.utils.logger import logger
 
 router = APIRouter(prefix="/position", tags=["position"])
@@ -43,17 +44,17 @@ async def create_new_position(
 
         if "Foreign" in error:
             logger.info(
-                f"{user.email}: Trying to add a position in non-existent section {position.section_name}"
+                f"{user.email}: Trying to add a position in non-existent section id {position.section_id}"
             )
 
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"The section with name {position.section_name} does not exist ",
+                detail=f"The section with id {position.section_id} does not exist ",
             )
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     logger.info(
-        f"{user.email}: Added new position, name = {position.name}, section = {position.section_name}"
+        f"{user.email}: Added new position, name = {position.name}, section = {position.section_id}"
     )
 
     return JSONResponse(
@@ -85,21 +86,22 @@ async def delete_position(
     )
 
 
-@router.patch("/update/{section_name}/{position_name}")
+@router.patch("/update/{section_id}/{position_name}")
 async def update_position(
     user: Annotated[User, Depends(get_current_superuser)],
     position_name: str,
-    section_name: str,
+    section_id: int,
     session: AsyncSession = Depends(get_async_session),
 ):
     try:
         stmt = (
             update(Position)
             .filter(Position.name == position_name)
-            .values(section_name=section_name)
+            .values(section_id=section_id)
         )
         result = await session.execute(stmt)
         await session.commit()
+
     except IntegrityError as e:
 
         error = str(e.orig)
@@ -107,12 +109,12 @@ async def update_position(
         if "Foreign" in error:
 
             logger.info(
-                f"{user.email}: Trying to change position section name to non-existent {section_name}"
+                f"{user.email}: Trying to change position section id to non-existent {section_id}"
             )
 
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"The section {section_name} does not exist ",
+                detail=f"The section {section_id} does not exist ",
             )
 
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -126,7 +128,7 @@ async def update_position(
         )
 
     logger.info(
-        f"{user.email}: Update position {position_name}, new section = {section_name}"
+        f"{user.email}: Update position {position_name}, new section = {section_id}"
     )
     return JSONResponse(
         content={"message": "position update"}, status_code=status.HTTP_200_OK
@@ -139,12 +141,16 @@ async def get_position_by_name(
     position_name: str,
     session: AsyncSession = Depends(get_async_session),
 ):
-    query = select(Position).filter(Position.name == position_name)
-    result = await session.execute(query)
+    query = (
+        select(Position)
+        .options(joinedload(Position.section).load_only(Section.name))
+        .filter(Position.name == position_name)
+    )
+    position = await session.execute(query)
 
-    result = result.scalars().one_or_none()
+    position = position.scalars().one_or_none()
 
-    if result is None:
+    if position is None:
         logger.info(
             f"{user.email}: Trying to select a non-existent position {position_name}"
         )
@@ -153,7 +159,10 @@ async def get_position_by_name(
         )
 
     logger.info(f"{user.email}: Select info of position {position_name}")
-    return PositionRead.model_validate(result)
+
+    return PositionRead(
+        id=position.id, section_name=position.section.name, name=position_name
+    )
 
 
 @router.get("/list/", response_model=PositionPaginationResponse)
@@ -164,13 +173,15 @@ async def get_position(
     last_position_name: Optional[str] = Query(
         None, description="Последняя должность на предыдущей странице"
     ),
-    section: Optional[str] = Query(None, description="Отдел"),
+    section: Optional[int] = Query(None, description="Отдел"),
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ):
     log = f"{user.email}: Selected positions with params pg_size = {page_size}, desc = {desc}"
 
-    query = select(Position)
+    query = select(Position).options(
+        joinedload(Position.section).load_only(Section.name)
+    )
 
     query = (
         query.order_by(Position.name.desc()) if desc else query.order_by(Position.name)
@@ -192,13 +203,18 @@ async def get_position(
 
     if filter_name:
         log += f", filter name = {filter_name}"
-        query = query.filter(Position.name.ilike(f"%{filter_name}%"))
+        query = query.filter(Position.name.ilike(f"{filter_name}%"))
 
     query = query.limit(page_size + 1)
 
     results = await session.execute(query)
     results = results.scalars().all()
-    positions = [PositionRead.model_validate(position) for position in results]
+    positions = [
+        PositionRead(
+            id=position.id, section_name=position.section.name, name=position.name
+        )
+        for position in results
+    ]
 
     is_final = False if len(results) > page_size else True
 

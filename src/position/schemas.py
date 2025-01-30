@@ -15,7 +15,7 @@ class PositionRead(BaseModel):
 
 
 class PositionCreate(BaseModel):
-    section_name: str
+    section_id: int
     name: str
 
 
