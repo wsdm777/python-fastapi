@@ -9,7 +9,7 @@ class MessageResponse(BaseModel):
 
 class VacationRead(BaseModel):
     id: int
-    giver_email: EmailStr
+    giver_email: EmailStr | None
     receiver_email: EmailStr
     start_date: date
     end_date: date
@@ -20,7 +20,7 @@ class VacationRead(BaseModel):
 
 
 class VacationCreate(BaseModel):
-    receiver_email: EmailStr
+    receiver_id: int
     start_date: date
     end_date: date
     description: Optional[str]

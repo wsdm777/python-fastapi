@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 from pydantic import EmailStr
 from sqlalchemy import and_, insert, select
+from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 from src.databasemodels import User, Vacation
@@ -27,7 +28,7 @@ async def create_new_vacation(
     session: AsyncSession = Depends(get_async_session),
 ):
     try:
-        values = {**vacation.model_dump(), "giver_email": user.email}
+        values = {**vacation.model_dump(), "giver_id": user.id}
         stmt = insert(Vacation).values(values)
         await session.execute(stmt)
         await session.commit()
@@ -43,13 +44,13 @@ async def create_new_vacation(
 
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"The user with email {vacation.receiver_email} does not exist ",
+                detail=f"The user with id {vacation.receiver_id} does not exist ",
             )
 
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     logger.info(
-        f"{user.email}: Create vacation, giver = {vacation.receiver_email}, start = {vacation.start_date}, end = {vacation.end_date}"
+        f"{user.email}: Create vacation, receiver id = {vacation.receiver_id}, start = {vacation.start_date}, end = {vacation.end_date}"
     )
 
     return JSONResponse(
@@ -63,12 +64,19 @@ async def get_vacation_by_id(
     vacation_id: int,
     session: AsyncSession = Depends(get_async_session),
 ):
-    stmt = select(Vacation).filter(Vacation.id == vacation_id)
-    result = await session.execute(stmt)
+    stmt = (
+        select(Vacation)
+        .options(
+            joinedload(Vacation.giver).load_only(User.email),
+            joinedload(Vacation.receiver).load_only(User.email),
+        )
+        .filter(Vacation.id == vacation_id)
+    )
+    vacation = await session.execute(stmt)
 
-    result = result.scalars().one_or_none()
+    vacation = vacation.scalars().one_or_none()
 
-    if result is None:
+    if vacation is None:
         logger.info(
             f"{user.email}: Trying to select a non-existent vacation {vacation_id}"
         )
@@ -77,7 +85,14 @@ async def get_vacation_by_id(
         )
 
     logger.info(f"{user.email}: Select info of vacation {vacation_id}")
-    return VacationRead.model_validate(result)
+    return VacationRead(
+        id=vacation.id,
+        giver_email=vacation.giver.email if vacation.giver else None,
+        receiver_email=vacation.receiver.email,
+        start_date=vacation.start_date,
+        end_date=vacation.end_date,
+        description=vacation.description,
+    )
 
 
 @router.get("/list/", response_model=VacationPaginationResponse)
@@ -91,14 +106,17 @@ async def get_vacations(
         None,
         description="Фильтр по статусу отпуска: active (активные), future (будущие), past (прошедшие)",
     ),
-    receiver_email: Optional[EmailStr] = Query(None),
-    giver_email: Optional[EmailStr] = Query(None),
+    receiver_id: Optional[int] = Query(None),
+    giver_id: Optional[int] = Query(None),
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ):
     log = f"{user.email}: Selected vacations with params pg_size = {page_size}, desc = {desc}"
 
-    query = select(Vacation)
+    query = select(Vacation).options(
+        joinedload(Vacation.giver).load_only(User.email),
+        joinedload(Vacation.receiver).load_only(User.email),
+    )
 
     query = query.order_by(Vacation.id.desc()) if desc else query.order_by(Vacation.id)
 
@@ -112,32 +130,41 @@ async def get_vacations(
         )
         query = query.filter(cursor_filter)
 
-    if receiver_email is not None:
-        log += f", receiver_email = {receiver_email}"
-        query = query.filter(Vacation.receiver_id == receiver_email)
+    if receiver_id is not None:
+        log += f", receiver_id = {receiver_id}"
+        query = query.filter(Vacation.receiver_id == receiver_id)
 
-    if giver_email is not None:
-        log += f", giver_email = {giver_email}"
-        query = query.filter(Vacation.giver_id == giver_email)
+    if giver_id is not None:
+        log += f", giver_id = {giver_id}"
+        query = query.filter(Vacation.giver_id == giver_id)
 
     if status is not None:
         log += f", status = {status}"
         today = date.today()
 
-        if status == "active":
-            query = query.filter(
-                and_(Vacation.start_date <= today, Vacation.end_date >= today)
-            )
-        elif status == "future":
-            query = query.filter(Vacation.start_date > today)
-        elif status == "past":
-            query = query.filter(Vacation.end_date < today)
+        status_filters = {
+            "active": and_(Vacation.start_date <= today, Vacation.end_date >= today),
+            "future": Vacation.start_date > today,
+            "past": Vacation.end_date < today,
+        }
+
+        query = query.filter(status_filters[status])
 
     query = query.limit(page_size + 1)
 
     results = await session.execute(query)
     results = results.scalars().all()
-    vacations = [VacationRead.model_validate(vacation) for vacation in results]
+    vacations = [
+        VacationRead(
+            id=vacation.id,
+            giver_email=vacation.giver.email if vacation.giver else None,
+            receiver_email=vacation.receiver.email,
+            start_date=vacation.start_date,
+            end_date=vacation.end_date,
+            description=vacation.description,
+        )
+        for vacation in results
+    ]
 
     logger.info(log)
 
