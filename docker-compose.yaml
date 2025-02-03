@@ -7,6 +7,8 @@ services:
       - db
     env_file:
       - .env
+    volumes:
+      - app_logs:/app/logs
 
   db:
     image: postgres:17.2-alpine
@@ -21,4 +23,5 @@ services:
     env_file:
       - .env
 volumes:
+  app_logs:
   pgdata:
