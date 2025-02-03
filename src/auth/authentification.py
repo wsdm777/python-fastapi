@@ -23,7 +23,7 @@ class CustomAuthenticationBackend(AuthenticationBackend):
         return {"msg": "Successfully logged out"}
 
 
-cookie_transport = CookieTransport(cookie_name="authcook")
+cookie_transport = CookieTransport(cookie_name="authcook", cookie_secure=False)
 
 
 def get_jwt_strategy() -> CustomJWTStrategy:
