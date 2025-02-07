@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr
 
 
 class MessageResponse(BaseModel):
@@ -10,8 +10,7 @@ class SectionRead(BaseModel):
     name: str
     head_email: EmailStr | None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SectionCreate(BaseModel):
@@ -25,5 +24,4 @@ class SectionPaginationResponse(BaseModel):
     final: bool
     size: int
 
-    class ConfigDict:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

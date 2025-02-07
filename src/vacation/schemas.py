@@ -1,6 +1,6 @@
 from datetime import date
 from typing import Optional
-from pydantic import BaseModel, EmailStr, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, model_validator
 
 
 class MessageResponse(BaseModel):
@@ -15,8 +15,7 @@ class VacationRead(BaseModel):
     end_date: date
     description: str | None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class VacationCreate(BaseModel):

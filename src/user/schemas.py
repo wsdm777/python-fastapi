@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import Optional
 from fastapi_users import schemas
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 
 
 class MessageResponse(BaseModel):
@@ -17,8 +17,7 @@ class UserRead(schemas.BaseUser[int]):
     joined_at: date
     birthday: date
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserCreate(schemas.BaseUserCreate):
@@ -79,5 +78,4 @@ class UserInfo(BaseModel):
     is_on_vacation: bool
     is_superuser: bool
 
-    class ConfigDict:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
