@@ -111,7 +111,7 @@ async def hire_user(
     logger.info(f"{user.email}: User {user_email} deleted")
     return JSONResponse(
         content={"message": f"User {user_email} deleted"},
-        status_code=status.HTTP_202_ACCEPTED,
+        status_code=status.HTTP_200_OK,
     )
 
 

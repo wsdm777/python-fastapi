@@ -20,7 +20,7 @@ from src.utils.logger import logger
 router = APIRouter(prefix="/section", tags=["section"])
 
 
-@router.post("/add/", response_model=MessageResponse)
+@router.post("/add", response_model=MessageResponse)
 async def create_new_section(
     user: Annotated[UserTokenInfo, Depends(get_current_superuser)],
     section: SectionCreate,
@@ -89,14 +89,14 @@ async def delete_section(
 
     logger.info(f"{user.email}: Section {section_name} deleted")
     return JSONResponse(
-        content={"message": "Section deleted"}, status_code=status.HTTP_202_ACCEPTED
+        content={"message": "Section deleted"}, status_code=status.HTTP_200_OK
     )
 
 
-@router.put("/update/", response_model=MessageResponse)
+@router.put("/update", response_model=MessageResponse)
 async def update_section(
     user: Annotated[UserTokenInfo, Depends(get_current_superuser)],
-    section: SectionCreate = Query(),
+    section: SectionCreate,
     session: AsyncSession = Depends(get_async_session),
 ):
     try:

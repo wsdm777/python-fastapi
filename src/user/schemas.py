@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import Optional
 from fastapi_users import schemas
-from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 class MessageResponse(BaseModel):
@@ -25,11 +25,12 @@ class UserCreate(schemas.BaseUserCreate):
     surname: str
     position_id: int | None = None
     email: EmailStr
-    password: str
+    password: str = Field(min_length=4)
     is_active: Optional[bool] = True
     is_superuser: Optional[bool] = False
     is_verified: Optional[bool] = False
     birthday: date
+    model_config = ConfigDict(from_attributes=True)
 
     @field_validator("birthday", mode="before")
     def validate_birthday(cls, value):

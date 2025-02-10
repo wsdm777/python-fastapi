@@ -21,7 +21,7 @@ from src.utils.logger import logger
 router = APIRouter(prefix="/vacation", tags=["vacation"])
 
 
-@router.post("/add/", response_model=MessageResponse)
+@router.post("/add", response_model=MessageResponse)
 async def create_new_vacation(
     user: Annotated[User, Depends(get_current_superuser)],
     vacation: VacationCreate,

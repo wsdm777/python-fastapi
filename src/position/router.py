@@ -19,7 +19,7 @@ from src.utils.logger import logger
 router = APIRouter(prefix="/position", tags=["position"])
 
 
-@router.post("/add/", response_model=MessageResponse)
+@router.post("/add", response_model=MessageResponse)
 async def create_new_position(
     user: Annotated[User, Depends(get_current_superuser)],
     position: PositionCreate,
@@ -82,11 +82,11 @@ async def delete_position(
 
     logger.info(f"{user.email}: Deleted position {position_name}")
     return JSONResponse(
-        content={"Message": "Position deleted"}, status_code=status.HTTP_202_ACCEPTED
+        content={"Message": "Position deleted"}, status_code=status.HTTP_200_OK
     )
 
 
-@router.patch("/update/{section_id}/{position_name}")
+@router.patch("/update/{position_name}/{section_id}")
 async def update_position(
     user: Annotated[User, Depends(get_current_superuser)],
     position_name: str,
@@ -166,7 +166,7 @@ async def get_position_by_name(
 
 
 @router.get("/list/", response_model=PositionPaginationResponse)
-async def get_position(
+async def get_positions(
     desc: bool = Query(False, description="Тип сортировки"),
     filter_name: Optional[str] = Query(None, description="Должность"),
     page_size: int = Query(10, ge=1, le=100, description="Размер страницы"),
