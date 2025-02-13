@@ -20,14 +20,14 @@ cd python-fastapi
 ### 2. Создание `.env` файла
 Создай `.env` файл в корне проекта и добавь в него:
 ```ini
-DB_HOST=localhost
+DB_HOST=db
 DB_PORT=5432
 DB_NAME="dbname"
 DB_USER="pguser"
 DB_PASS="qwerty"
 SUPERUSER_EMAIL="root@example.com"  # Почта автогенерируемого пользователя в БД
 SUPERUSER_PASSWORD="root"
-REDIS_HOST=localhost
+REDIS_HOST=redis
 REDIS_PORT=6379
 UVICORN_WORKERS=1  # Количество воркеров Uvicorn
 ```
