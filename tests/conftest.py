@@ -13,7 +13,7 @@ from src.auth.router import hash_password
 from src.databasemodels import Base, Position, Section, User
 from src.database import get_async_session
 from src.main import app
-from src.config import REDIS_HOST, REDIS_PORT, SUPER_USER_PASSWORD
+from src.config import REDIS_HOST, REDIS_PORT, SUPERUSER_PASSWORD
 from src.config import DB_HOST, DB_NAME, DB_PASS, DB_PORT, DB_USER
 import src.services.redis as auth_service
 
@@ -35,7 +35,7 @@ async def setub_db():
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     async with test_async_session_maker() as session:
-        hashed_password = hash_password(password=SUPER_USER_PASSWORD)
+        hashed_password = hash_password(password=SUPERUSER_PASSWORD)
         admin = User(
             name="Test",
             surname="Test",
@@ -101,7 +101,7 @@ async def admin_auth_cookies():
             "/auth/login",
             json={
                 "email": "root@example.com",
-                "password": SUPER_USER_PASSWORD,
+                "password": SUPERUSER_PASSWORD,
             },
         )
         if response.status_code != status.HTTP_200_OK:
@@ -129,7 +129,7 @@ async def regular_auth_cookies():
             "/auth/login",
             json={
                 "email": "test@example.com",
-                "password": SUPER_USER_PASSWORD,
+                "password": SUPERUSER_PASSWORD,
             },
         )
         if response.status_code != status.HTTP_200_OK:

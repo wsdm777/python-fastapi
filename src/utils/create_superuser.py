@@ -5,7 +5,7 @@ from sqlalchemy import insert, select
 
 from src.auth.router import hash_password
 from src.databasemodels import User
-from src.config import SUPER_USER_EMAIL, SUPER_USER_PASSWORD
+from src.config import SUPERUSER_EMAIL, SUPERUSER_PASSWORD
 from src.database import get_async_session
 from src.utils.logger import logger
 
@@ -15,8 +15,8 @@ get_async_session_context = contextlib.asynccontextmanager(get_async_session)
 async def create_superuser(
     name: str = "Danya",
     surname: str = "Zolik",
-    email: EmailStr = SUPER_USER_EMAIL,
-    password: str = SUPER_USER_PASSWORD,
+    email: EmailStr = SUPERUSER_EMAIL,
+    password: str = SUPERUSER_PASSWORD,
     is_superuser: bool = True,
     birthday: date = date.today(),
 ):
