@@ -1,5 +1,4 @@
 from datetime import date
-from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTable
 from sqlalchemy import Date, ForeignKey, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship, DeclarativeBase
 
@@ -84,7 +83,7 @@ class Position(Base):
     __table_args__ = (Index("ix_position_section_name", section_id),)
 
 
-class User(SQLAlchemyBaseUserTable[int], Base):
+class User(Base):
     __tablename__ = "user"
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(nullable=False)

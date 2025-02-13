@@ -34,9 +34,7 @@ async def test_register(client_fixture, expected_status):
         json={
             "email": "123@example.com",
             "password": "test",
-            "is_active": True,
             "is_superuser": True,
-            "is_verified": True,
             "name": "test",
             "surname": "test",
             "birthday": "2000-02-08",

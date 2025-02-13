@@ -8,7 +8,7 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 from src.databasemodels import User, Vacation
-from src.user.router import get_current_superuser, get_current_user
+from src.services.redis import get_current_superuser, get_current_user
 from src.database import get_async_session
 from src.vacation.schemas import (
     MessageResponse,
@@ -38,8 +38,8 @@ async def create_new_vacation(
         error = str(e.orig)
 
         if "Foreign" in error:
-            logger.info(
-                f"{user.email}: Trying to add a vacation to a non-existent user {vacation.receiver_email}"
+            logger.warning(
+                f"{user.email}: Trying to add a vacation to a non-existent user {vacation.receiver_id}"
             )
 
             raise HTTPException(
@@ -77,7 +77,7 @@ async def get_vacation_by_id(
     vacation = vacation.scalars().one_or_none()
 
     if vacation is None:
-        logger.info(
+        logger.warning(
             f"{user.email}: Trying to select a non-existent vacation {vacation_id}"
         )
         raise HTTPException(

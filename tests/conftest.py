@@ -1,24 +1,23 @@
 import asyncio
-from contextlib import asynccontextmanager
 from datetime import date
 import logging
 from typing import AsyncGenerator
-from argon2 import hash_password
+import fakeredis
 import pytest
 from httpx import ASGITransport, AsyncClient
 from fastapi import status
-from sqlalchemy import NullPool, insert
+from redis.asyncio import Redis
+from sqlalchemy import NullPool
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from src.auth.router import hash_password
 from src.databasemodels import Base, Position, Section, User
 from src.database import get_async_session
 from src.main import app
-from src.config import SUPER_USER_PASSWORD
+from src.config import REDIS_HOST, REDIS_PORT, SUPER_USER_PASSWORD
 from src.config import DB_HOST, DB_NAME, DB_PASS, DB_PORT, DB_USER
-from src.user.schemas import UserCreate, UserRead
+import src.services.redis as auth_service
 
 logging.basicConfig(level=logging.DEBUG)
-
-pass_hash = "$argon2id$v=19$m=65536,t=3,p=4$1GTdgCCgFwuhT0irVuKZEQ$B6tV6CJMAr4py31Q4ALNHbuBJcR2iIJCdHY9jBhanCQ"
 
 DATABASE_URL = f"postgresql+asyncpg://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
@@ -36,13 +35,13 @@ async def setub_db():
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     async with test_async_session_maker() as session:
+        hashed_password = hash_password(password=SUPER_USER_PASSWORD)
         admin = User(
             name="Test",
             surname="Test",
             email="root@example.com",
-            hashed_password=pass_hash,
+            hashed_password=hashed_password,
             is_superuser=True,
-            is_verified=True,
             birthday=date.today(),
         )
 
@@ -50,9 +49,8 @@ async def setub_db():
             name="Regular",
             surname="User",
             email="test@example.com",
-            hashed_password=pass_hash,
+            hashed_password=hashed_password,
             is_superuser=False,
-            is_verified=False,
             birthday=date.today(),
         )
 
@@ -75,6 +73,14 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
             yield session
 
 
+@pytest.fixture(scope="function", autouse=True)
+async def mock_redis(monkeypatch):
+    client = Redis(host=REDIS_HOST, port=REDIS_PORT, db=0, decode_responses=True)
+    monkeypatch.setattr(auth_service, "redis_client", client)
+    yield
+    await client.aclose()
+
+
 @pytest.fixture(autouse=True)
 async def override_db_dependency():
     async def _override_get_session() -> AsyncGenerator[AsyncSession, None]:
@@ -93,16 +99,12 @@ async def admin_auth_cookies():
     ) as client:
         response = await client.post(
             "/auth/login",
-            data={
-                "grant_type": "password",
-                "username": "root@example.com",
+            json={
+                "email": "root@example.com",
                 "password": SUPER_USER_PASSWORD,
-                "scope": "",
-                "client_id": "string",
-                "client_secret": "string",
             },
         )
-        if response.status_code != status.HTTP_204_NO_CONTENT:
+        if response.status_code != status.HTTP_200_OK:
             pytest.fail("Не удалось авторизовать администратора")
     return response.cookies
 
@@ -125,16 +127,12 @@ async def regular_auth_cookies():
     ) as client:
         response = await client.post(
             "/auth/login",
-            data={
-                "grant_type": "password",
-                "username": "test@example.com",
+            json={
+                "email": "test@example.com",
                 "password": SUPER_USER_PASSWORD,
-                "scope": "",
-                "client_id": "string",
-                "client_secret": "string",
             },
         )
-        if response.status_code != status.HTTP_204_NO_CONTENT:
+        if response.status_code != status.HTTP_200_OK:
             pytest.fail("Не удалось авторизовать пользователя")
     return response.cookies
 
