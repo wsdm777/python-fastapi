@@ -5,6 +5,7 @@ services:
       - "8080:8080"
     depends_on:
       - db
+      - redis
     env_file:
       - .env
     volumes:
@@ -22,6 +23,19 @@ services:
       - "5432:5432"
     env_file:
       - .env
+
+  redis:
+    container_name: redis
+    image: redis:7.2-alpine
+    restart: always
+    volumes:
+      - redisdata:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf", "--bind", "redis", "--port", "6379"]
+
 volumes:
   app_logs:
   pgdata:
+  redisdata:

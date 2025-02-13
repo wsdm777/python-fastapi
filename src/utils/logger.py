@@ -2,10 +2,13 @@ import logging
 from datetime import date
 import os
 
+
+log_dir = "/app/logs"
+os.makedirs(log_dir, exist_ok=True)
+today_date = date.today()
+log_file = os.path.join(log_dir, f"app_{today_date}.log")
 level = logging.DEBUG
 name = "Logger"
-today_date = date.today()
-log_file = f"app_{today_date}.log"
 
 handler = logging.FileHandler(log_file)
 handler.setLevel(level)

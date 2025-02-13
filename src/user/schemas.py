@@ -1,6 +1,4 @@
-from datetime import date, datetime
-from typing import Optional
-from fastapi_users import schemas
+from datetime import date
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
@@ -8,7 +6,7 @@ class MessageResponse(BaseModel):
     Message: str
 
 
-class UserRead(schemas.BaseUser[int]):
+class UserRead(BaseModel):
     id: int
     name: str
     surname: str
@@ -18,31 +16,6 @@ class UserRead(schemas.BaseUser[int]):
     birthday: date
 
     model_config = ConfigDict(from_attributes=True)
-
-
-class UserCreate(schemas.BaseUserCreate):
-    name: str
-    surname: str
-    position_id: int | None = None
-    email: EmailStr
-    password: str = Field(min_length=4)
-    is_active: Optional[bool] = True
-    is_superuser: Optional[bool] = False
-    is_verified: Optional[bool] = False
-    birthday: date
-    model_config = ConfigDict(from_attributes=True)
-
-    @field_validator("birthday", mode="before")
-    def validate_birthday(cls, value):
-        if value is None:
-            return value
-        if isinstance(value, date):
-            birthdate = value
-        elif isinstance(value, str):
-            birthdate = datetime.strptime(value, "%Y-%m-%d").date()
-        if birthdate > date.today():
-            raise ValueError("Birthday cant be in the future")
-        return value
 
 
 class UserPagination(BaseModel):
@@ -80,3 +53,7 @@ class UserInfo(BaseModel):
     is_superuser: bool
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class UserPassChange(BaseModel):
+    new_password: str = Field(min_length=4)

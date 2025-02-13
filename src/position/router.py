@@ -5,7 +5,7 @@ from sqlalchemy import insert, select, update, delete
 from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
-from src.auth.JWT import get_current_superuser, get_current_user
+from src.services.redis import get_current_superuser, get_current_user
 from src.position.schemas import (
     MessageResponse,
     PositionCreate,
@@ -35,7 +35,7 @@ async def create_new_position(
         error = str(e.orig)
 
         if "Unique" in error:
-            logger.info(
+            logger.warning(
                 f"{user.email}: Trying to add an existing position {position.name}"
             )
             raise HTTPException(
@@ -43,7 +43,7 @@ async def create_new_position(
             )
 
         if "Foreign" in error:
-            logger.info(
+            logger.warning(
                 f"{user.email}: Trying to add a position in non-existent section id {position.section_id}"
             )
 
@@ -73,7 +73,7 @@ async def delete_position(
     await session.commit()
 
     if result.rowcount == 0:
-        logger.info(
+        logger.warning(
             f"{user.email}: Trying to delete non-existent position {position_name}"
         )
         raise HTTPException(
@@ -108,7 +108,7 @@ async def update_position(
 
         if "Foreign" in error:
 
-            logger.info(
+            logger.warning(
                 f"{user.email}: Trying to change position section id to non-existent {section_id}"
             )
 
@@ -120,7 +120,7 @@ async def update_position(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     if result.rowcount == 0:
-        logger.info(
+        logger.warning(
             f"{user.email}: Trying to update non-existent position {position_name}"
         )
         raise HTTPException(
@@ -151,7 +151,7 @@ async def get_position_by_name(
     position = position.scalars().one_or_none()
 
     if position is None:
-        logger.info(
+        logger.warning(
             f"{user.email}: Trying to select a non-existent position {position_name}"
         )
         raise HTTPException(

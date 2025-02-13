@@ -3,11 +3,12 @@ from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 from pydantic import EmailStr
-from sqlalchemy import and_, case, delete, exists, func, select, tuple_, update
+from sqlalchemy import and_, case, delete, exists, func, insert, select, tuple_, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload, aliased
-from src.auth.schemas import UserTokenInfo
+from src.auth.router import hash_password, verify_password
+from src.auth.schemas import UserSessionInfo
 from src.utils.logger import logger
 from src.database import get_async_session
 from src.databasemodels import Position, Section, User, Vacation
@@ -16,15 +17,20 @@ from src.user.schemas import (
     UserInfo,
     UserPagination,
     UserPaginationResponse,
+    UserPassChange,
 )
-from src.auth.JWT import get_current_superuser, get_current_user
+from src.services.redis import (
+    get_current_superuser,
+    get_current_user,
+    remove_all_user_session,
+)
 
 router = APIRouter(prefix="/user", tags=["user"])
 
 
 @router.get("/{user_email}", response_model=UserInfo)
 async def get_user_by_email(
-    user: Annotated[UserTokenInfo, Depends(get_current_user)],
+    user: Annotated[UserSessionInfo, Depends(get_current_user)],
     user_email: EmailStr,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -39,7 +45,7 @@ async def get_user_by_email(
     result = await session.execute(query)
     result = result.unique().one_or_none()
     if result is None:
-        logger.error(f"{user.email}: User {user_email} not found")
+        logger.warning(f"{user.email}: User {user_email} not found")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
@@ -65,20 +71,28 @@ async def get_user_by_email(
 
 @router.patch("/getsuper/{user_email}", response_model=MessageResponse)
 async def update_user_access(
-    user: Annotated[UserTokenInfo, Depends(get_current_superuser)],
+    user: Annotated[UserSessionInfo, Depends(get_current_superuser)],
     user_email: EmailStr,
     session: AsyncSession = Depends(get_async_session),
 ):
-    stmt = update(User).filter(User.email == user_email).values(is_superuser=True)
+    stmt = (
+        update(User)
+        .filter(User.email == user_email)
+        .values(is_superuser=True)
+        .returning(User.id)
+    )
     result = await session.execute(stmt)
     await session.commit()
 
-    if result.rowcount == 0:
-        logger.info(f"{user.email}: User {user_email} not found")
+    user_id = result.scalar()
+
+    if user_id is None:
+        logger.warning(f"{user.email}: User {user_email} not found")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
 
+    await remove_all_user_session(user_id)
     logger.info(f"{user.email}: User {user_email} upgrade")
     return JSONResponse(
         content={"message": f"User {user_email} upgrade"},
@@ -88,26 +102,31 @@ async def update_user_access(
 
 @router.delete("/hire/{user_email}", response_model=MessageResponse)
 async def hire_user(
-    user: Annotated[UserTokenInfo, Depends(get_current_superuser)],
+    user: Annotated[UserSessionInfo, Depends(get_current_superuser)],
     user_email: EmailStr,
     session: AsyncSession = Depends(get_async_session),
 ):
     if user.email == user_email:
-        logger.info(f"{user.email}: Attempted self-deleting")
+        logger.warning(f"{user.email}: Attempted self-deleting")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"You cannot delete yourself"
         )
 
-    stmt = delete(User).filter(User.email == user_email)
+    stmt = delete(User).filter(User.email == user_email).returning(User.id)
     result = await session.execute(stmt)
     await session.commit()
 
-    if result.rowcount == 0:
-        logger.info(f"Trying to delete a non-existent user {user_email}")
+    user_id = result.scalar()
+
+    if user_id is None:
+        logger.warning(
+            f"{user.email}: Trying to delete a non-existent user {user_email}"
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"User {user_email} not found"
         )
 
+    await remove_all_user_session(user_id)
     logger.info(f"{user.email}: User {user_email} deleted")
     return JSONResponse(
         content={"message": f"User {user_email} deleted"},
@@ -129,7 +148,7 @@ async def get_users(
     on_vacation_only: Optional[bool] = Query(
         None, description="Фильтр пользователей в отпуске (True/False)"
     ),
-    user: UserTokenInfo = Depends(get_current_user),
+    user: UserSessionInfo = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ):
     log = (
@@ -230,7 +249,7 @@ async def get_users(
     "/new_position/{user_email}/{position_id}", response_model=MessageResponse
 )
 async def update_user_position(
-    user: Annotated[UserTokenInfo, Depends(get_current_superuser)],
+    user: Annotated[UserSessionInfo, Depends(get_current_superuser)],
     user_email: EmailStr,
     position_id: int,
     session: AsyncSession = Depends(get_async_session),
@@ -268,4 +287,23 @@ async def update_user_position(
     logger.info(f"{user.email}: Update {user_email}")
     return JSONResponse(
         content={"message": "User update"}, status_code=status.HTTP_200_OK
+    )
+
+
+@router.patch("/change_password", response_model=MessageResponse)
+async def change_password(
+    user: Annotated[UserSessionInfo, Depends(get_current_user)],
+    data: UserPassChange,
+    session: AsyncSession = Depends(get_async_session),
+):
+    hash_pass = hash_password(data.new_password)
+    stmt = (
+        update(User).values(hashed_password=hash_pass).filter(User.email == user.email)
+    )
+    await session.execute(stmt)
+    await session.commit()
+
+    await remove_all_user_session(user.id)
+    return JSONResponse(
+        content={"message": "Password update"}, status_code=status.HTTP_200_OK
     )

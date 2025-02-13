@@ -5,8 +5,8 @@ from sqlalchemy import delete, insert, select, update
 from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
-from src.auth.JWT import get_current_superuser, get_current_user
-from src.auth.schemas import UserTokenInfo
+from src.services.redis import get_current_superuser, get_current_user
+from src.auth.schemas import UserSessionInfo
 from src.section.schemas import (
     MessageResponse,
     SectionCreate,
@@ -22,7 +22,7 @@ router = APIRouter(prefix="/section", tags=["section"])
 
 @router.post("/add", response_model=MessageResponse)
 async def create_new_section(
-    user: Annotated[UserTokenInfo, Depends(get_current_superuser)],
+    user: Annotated[UserSessionInfo, Depends(get_current_superuser)],
     section: SectionCreate,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -37,7 +37,7 @@ async def create_new_section(
         error = str(e.orig)
 
         if "Unique" in error:
-            logger.info(
+            logger.warning(
                 f"{user.email}: Trying to add an existing section {section.name}"
             )
 
@@ -46,7 +46,7 @@ async def create_new_section(
             )
 
         if "Foreign" in error:
-            logger.info(
+            logger.warning(
                 f"{user.email}: Trying to add a section with a non-existent user id = {section.head_id}"
             )
 
@@ -69,7 +69,7 @@ async def create_new_section(
 
 @router.delete("/delete/{section_name}", response_model=MessageResponse)
 async def delete_section(
-    user: Annotated[UserTokenInfo, Depends(get_current_superuser)],
+    user: Annotated[UserSessionInfo, Depends(get_current_superuser)],
     section_name: str,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -79,7 +79,7 @@ async def delete_section(
     await session.commit()
 
     if result.rowcount == 0:
-        logger.info(
+        logger.warning(
             f"{user.email}: Trying to delete a non-existent section {section_name}"
         )
         raise HTTPException(
@@ -95,7 +95,7 @@ async def delete_section(
 
 @router.put("/update", response_model=MessageResponse)
 async def update_section(
-    user: Annotated[UserTokenInfo, Depends(get_current_superuser)],
+    user: Annotated[UserSessionInfo, Depends(get_current_superuser)],
     section: SectionCreate,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -114,7 +114,7 @@ async def update_section(
 
         if "Foreign" in error:
 
-            logger.info(
+            logger.warning(
                 f"{user.email}: Trying to change head of section {section.name} to non-existent user id = {section.head_id}"
             )
 
@@ -126,7 +126,7 @@ async def update_section(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     if result.rowcount == 0:
-        logger.info(
+        logger.warning(
             f"{user.email}: Trying to update non-existent section {section.name}"
         )
         raise HTTPException(
@@ -144,7 +144,7 @@ async def update_section(
 
 @router.get("/{section_name}", response_model=SectionRead)
 async def get_section_by_name(
-    user: Annotated[UserTokenInfo, Depends(get_current_user)],
+    user: Annotated[UserSessionInfo, Depends(get_current_user)],
     section_name: str,
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -158,7 +158,7 @@ async def get_section_by_name(
     section = section.scalars().one_or_none()
 
     if section is None:
-        logger.info(
+        logger.warning(
             f"{user.email}: Trying to select a non-existent section {section_name}"
         )
         raise HTTPException(
@@ -182,7 +182,7 @@ async def get_sections(
     last_section_name: Optional[str] = Query(
         None, description="Последний на предыдущей странице"
     ),
-    user: UserTokenInfo = Depends(get_current_user),
+    user: UserSessionInfo = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ):
     log = f"{user.email}: Selected sections with params pg_size = {page_size}, desc = {desc}"
