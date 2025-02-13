@@ -14,5 +14,7 @@ alembic upgrade head
 echo "Starting background task for listening to expired keys..."
 python -c "from src.services.redis import listen_for_expiration_keys; import asyncio; asyncio.run(listen_for_expiration_keys())" &
 
-echo "Starting application..."
-exec gunicorn src.main:app --workers 1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8080
+UVICORN_WORKERS=${UVICORN_WORKERS:-1}
+
+echo "Starting application with $UVICORN_WORKERS workers..."
+exec gunicorn src.main:app --workers "$UVICORN_WORKERS" --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8080
