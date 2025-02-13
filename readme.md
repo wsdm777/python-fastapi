@@ -90,10 +90,7 @@ http://localhost:8080/redoc
 
 ### Swagger UI
 
-Если необходимо добавить скриншоты документации API:
-   ```markdown
-   ![Swagger UI](screenshots/swagger_ui.png)
-   ```
+![Swagger UI](screenshots/swagger_ui.png)
 
 
 ## ✅ Тестирование
