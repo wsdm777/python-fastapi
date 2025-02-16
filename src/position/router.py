@@ -19,7 +19,7 @@ from src.utils.logger import logger
 router = APIRouter(prefix="/position", tags=["position"])
 
 
-@router.post("/add", response_model=MessageResponse)
+@router.post("/create", response_model=MessageResponse)
 async def create_new_position(
     user: Annotated[User, Depends(get_current_superuser)],
     position: PositionCreate,
@@ -36,7 +36,7 @@ async def create_new_position(
 
         if "Unique" in error:
             logger.warning(
-                f"{user.email}: Trying to add an existing position {position.name}"
+                f"{user.email}: Trying to create an existing position {position.name}"
             )
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, detail="Position already exist"
@@ -44,7 +44,7 @@ async def create_new_position(
 
         if "Foreign" in error:
             logger.warning(
-                f"{user.email}: Trying to add a position in non-existent section id {position.section_id}"
+                f"{user.email}: Trying to create a position in non-existent section id {position.section_id}"
             )
 
             raise HTTPException(
@@ -54,7 +54,7 @@ async def create_new_position(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     logger.info(
-        f"{user.email}: Added new position, name = {position.name}, section = {position.section_id}"
+        f"{user.email}: Created new position, name = {position.name}, section = {position.section_id}"
     )
 
     return JSONResponse(
@@ -62,7 +62,7 @@ async def create_new_position(
     )
 
 
-@router.delete("/delete/{position_name}", response_model=MessageResponse)
+@router.delete("/{position_name}/remove", response_model=MessageResponse)
 async def delete_position(
     user: Annotated[User, Depends(get_current_superuser)],
     position_name: str,
@@ -86,7 +86,7 @@ async def delete_position(
     )
 
 
-@router.patch("/update/{position_name}/{section_id}")
+@router.patch("/{position_name}/{section_id}")
 async def update_position(
     user: Annotated[User, Depends(get_current_superuser)],
     position_name: str,

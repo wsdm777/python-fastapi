@@ -1,5 +1,9 @@
+import json
+from unittest import mock
 from fastapi import status
 import pytest
+
+from src.config import SUPERUSER_PASSWORD
 
 base = "/user/"
 
@@ -53,7 +57,7 @@ async def test_register(client_fixture, expected_status):
     indirect=["client_fixture"],
 )
 async def test_update(client_fixture, expected_status):
-    respond = await client_fixture.patch(base + "getsuper/123@example.com")
+    respond = await client_fixture.patch(base + "grand-admin/123@example.com")
     assert respond.status_code == expected_status
 
 
@@ -98,7 +102,7 @@ async def test_get_users(client_fixture, expected_status, params):
     indirect=["client_fixture"],
 )
 async def test_user_position_patch(client_fixture, expected_status):
-    respond = await client_fixture.patch(base + "new_position/123@example.com/1")
+    respond = await client_fixture.patch(base + "123@example.com/position/1")
     assert respond.status_code == expected_status
 
 
@@ -111,9 +115,27 @@ async def test_user_position_patch(client_fixture, expected_status):
     ],
     indirect=["client_fixture"],
 )
-async def test_hire(client_fixture, expected_status):
-    respond = await client_fixture.delete(base + "hire/123@example.com")
+async def test_delete(client_fixture, expected_status):
+    respond = await client_fixture.delete(base + "123@example.com")
     assert respond.status_code == expected_status
     if respond.status_code == status.HTTP_200_OK:
         respond = await client_fixture.get(base + "123@example.com")
         assert respond.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.parametrize(
+    "client_fixture, expected_status",
+    [
+        ("regular_client", status.HTTP_200_OK),
+        ("unauthorized_client", status.HTTP_401_UNAUTHORIZED),
+    ],
+    indirect=["client_fixture"],
+)
+async def test_password_change(client_fixture, expected_status, mock_redis):
+    respond = await client_fixture.patch(
+        base + "change-password", json={"new_password": SUPERUSER_PASSWORD}
+    )
+    assert respond.status_code == expected_status
+    if respond.status_code == 200:
+        key = "user_sessions:2"
+        assert await mock_redis.exists(key) == 0

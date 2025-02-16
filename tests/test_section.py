@@ -13,9 +13,9 @@ base = "/section/"
     ],
     indirect=["client_fixture"],
 )
-async def test_section_add(client_fixture, expected_status):
+async def test_section_create(client_fixture, expected_status):
     respond = await client_fixture.post(
-        base + "add",
+        base + "create",
         json={"name": "Section"},
     )
     assert respond.status_code == expected_status
@@ -45,8 +45,7 @@ async def test_get_section(client_fixture, expected_status):
 )
 async def test_put_section(client_fixture, expected_status):
     respond = await client_fixture.put(
-        base + "update",
-        json={"name": "Section", "head_id": 1},
+        base + "Section/1",
     )
     assert respond.status_code == expected_status
 
@@ -88,7 +87,7 @@ async def test_get_sections(client_fixture, expected_status, params):
     indirect=["client_fixture"],
 )
 async def test_delete_section(client_fixture, expected_status):
-    respond = await client_fixture.delete(base + "delete/Section")
+    respond = await client_fixture.delete(base + "Section/remove")
     assert respond.status_code == expected_status
     if respond.status_code == status.HTTP_200_OK:
         respond = await client_fixture.get(base + "Section")

@@ -13,11 +13,19 @@ from src.auth.router import hash_password
 from src.databasemodels import Base, Position, Section, User
 from src.database import get_async_session
 from src.main import app
-from src.config import REDIS_HOST, REDIS_PORT, SUPERUSER_PASSWORD
-from src.config import DB_HOST, DB_NAME, DB_PASS, DB_PORT, DB_USER
+from src.config import (
+    DB_NAME,
+    DB_PASS,
+    DB_PORT,
+    DB_USER,
+    REDIS_PORT,
+    SUPERUSER_PASSWORD,
+)
 import src.services.redis as auth_service
 
 logging.basicConfig(level=logging.DEBUG)
+DB_HOST = "localhost"
+REDIS_HOST = "localhost"
 
 DATABASE_URL = f"postgresql+asyncpg://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
@@ -77,7 +85,7 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
 async def mock_redis(monkeypatch):
     client = Redis(host=REDIS_HOST, port=REDIS_PORT, db=0, decode_responses=True)
     monkeypatch.setattr(auth_service, "redis_client", client)
-    yield
+    yield client
     await client.aclose()
 
 

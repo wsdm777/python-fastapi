@@ -17,7 +17,7 @@ async def lifespan(app: FastAPI):
     logger.info("App is shutting down")
 
 
-app = FastAPI(title="TestApp", lifespan=lifespan)
+app = FastAPI(title="FastAPI Project", lifespan=lifespan)
 
 
 app.include_router(regRouter)

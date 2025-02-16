@@ -13,9 +13,9 @@ base = "/vacation/"
     ],
     indirect=["client_fixture"],
 )
-async def test_vacation_add(client_fixture, expected_status):
+async def test_vacation_create(client_fixture, expected_status):
     respond = await client_fixture.post(
-        base + "add",
+        base + "create",
         json={
             "receiver_id": 2,
             "start_date": "2024-02-10",

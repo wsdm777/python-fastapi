@@ -13,9 +13,9 @@ base = "/position/"
     ],
     indirect=["client_fixture"],
 )
-async def test_position_add(client_fixture, expected_status):
+async def test_position_create(client_fixture, expected_status):
     respond = await client_fixture.post(
-        base + "add",
+        base + "create",
         json={"section_id": 1, "name": "Position"},
     )
     assert respond.status_code == expected_status
@@ -44,7 +44,7 @@ async def test_get_position(client_fixture, expected_status):
     indirect=["client_fixture"],
 )
 async def test_patch_position(client_fixture, expected_status):
-    respond = await client_fixture.patch(base + "update/Position/1")
+    respond = await client_fixture.patch(base + f"Position/{1}")
     assert respond.status_code == expected_status
 
 
@@ -86,7 +86,7 @@ async def test_get_positions(client_fixture, expected_status, params):
     indirect=["client_fixture"],
 )
 async def test_delete_position(client_fixture, expected_status):
-    respond = await client_fixture.delete(base + "delete/Position")
+    respond = await client_fixture.delete(base + "Position/remove")
     assert respond.status_code == expected_status
     if respond.status_code == status.HTTP_200_OK:
         respond = await client_fixture.get(base + "Position")

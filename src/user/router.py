@@ -69,7 +69,7 @@ async def get_user_by_email(
     )
 
 
-@router.patch("/getsuper/{user_email}", response_model=MessageResponse)
+@router.patch("/grand-admin/{user_email}", response_model=MessageResponse)
 async def update_user_access(
     user: Annotated[UserSessionInfo, Depends(get_current_superuser)],
     user_email: EmailStr,
@@ -100,8 +100,8 @@ async def update_user_access(
     )
 
 
-@router.delete("/hire/{user_email}", response_model=MessageResponse)
-async def hire_user(
+@router.delete("/{user_email}", response_model=MessageResponse)
+async def delete_user(
     user: Annotated[UserSessionInfo, Depends(get_current_superuser)],
     user_email: EmailStr,
     session: AsyncSession = Depends(get_async_session),
@@ -245,9 +245,7 @@ async def get_users(
     )
 
 
-@router.patch(
-    "/new_position/{user_email}/{position_id}", response_model=MessageResponse
-)
+@router.patch("/{user_email}/position/{position_id}", response_model=MessageResponse)
 async def update_user_position(
     user: Annotated[UserSessionInfo, Depends(get_current_superuser)],
     user_email: EmailStr,
@@ -290,7 +288,7 @@ async def update_user_position(
     )
 
 
-@router.patch("/change_password", response_model=MessageResponse)
+@router.patch("/change-password", response_model=MessageResponse)
 async def change_password(
     user: Annotated[UserSessionInfo, Depends(get_current_user)],
     data: UserPassChange,

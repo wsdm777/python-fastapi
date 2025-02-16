@@ -20,7 +20,7 @@ from src.utils.logger import logger
 router = APIRouter(prefix="/section", tags=["section"])
 
 
-@router.post("/add", response_model=MessageResponse)
+@router.post("/create", response_model=MessageResponse)
 async def create_new_section(
     user: Annotated[UserSessionInfo, Depends(get_current_superuser)],
     section: SectionCreate,
@@ -38,7 +38,7 @@ async def create_new_section(
 
         if "Unique" in error:
             logger.warning(
-                f"{user.email}: Trying to add an existing section {section.name}"
+                f"{user.email}: Trying to create an existing section {section.name}"
             )
 
             raise HTTPException(
@@ -47,7 +47,7 @@ async def create_new_section(
 
         if "Foreign" in error:
             logger.warning(
-                f"{user.email}: Trying to add a section with a non-existent user id = {section.head_id}"
+                f"{user.email}: Trying to create a section with a non-existent user id = {section.head_id}"
             )
 
             raise HTTPException(
@@ -58,7 +58,7 @@ async def create_new_section(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     logger.info(
-        f"{user.email}: Added new section, name = {section.name}, head = {section.head_id}"
+        f"{user.email}: Created new section, name = {section.name}, head = {section.head_id}"
     )
 
     return JSONResponse(
@@ -67,7 +67,7 @@ async def create_new_section(
     )
 
 
-@router.delete("/delete/{section_name}", response_model=MessageResponse)
+@router.delete("/{section_name}/remove", response_model=MessageResponse)
 async def delete_section(
     user: Annotated[UserSessionInfo, Depends(get_current_superuser)],
     section_name: str,
@@ -93,17 +93,16 @@ async def delete_section(
     )
 
 
-@router.put("/update", response_model=MessageResponse)
+@router.put("/{section_name}/{head_id}", response_model=MessageResponse)
 async def update_section(
     user: Annotated[UserSessionInfo, Depends(get_current_superuser)],
-    section: SectionCreate,
+    section_name: str,
+    head_id: int = None,
     session: AsyncSession = Depends(get_async_session),
 ):
     try:
         stmt = (
-            update(Section)
-            .filter(Section.name == section.name)
-            .values(head_id=section.head_id)
+            update(Section).filter(Section.name == section_name).values(head_id=head_id)
         )
         result = await session.execute(stmt)
         await session.commit()
@@ -115,28 +114,26 @@ async def update_section(
         if "Foreign" in error:
 
             logger.warning(
-                f"{user.email}: Trying to change head of section {section.name} to non-existent user id = {section.head_id}"
+                f"{user.email}: Trying to change head of section {section_name} to non-existent user id = {head_id}"
             )
 
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"The user with id {section.head_id} does not exist ",
+                detail=f"The user with id {section_name} does not exist ",
             )
 
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     if result.rowcount == 0:
         logger.warning(
-            f"{user.email}: Trying to update non-existent section {section.name}"
+            f"{user.email}: Trying to update non-existent section {section_name}"
         )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Section {section.name} not found",
+            detail=f"Section {section_name} not found",
         )
 
-    logger.info(
-        f"{user.email}: Change section {section.name} head to {section.head_id}"
-    )
+    logger.info(f"{user.email}: Change section {section_name} head to {head_id}")
     return JSONResponse(
         content={"message": "Section update"}, status_code=status.HTTP_200_OK
     )
