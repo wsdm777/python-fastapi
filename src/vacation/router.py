@@ -2,11 +2,11 @@ from datetime import date
 from typing import Annotated, Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
-from pydantic import EmailStr
 from sqlalchemy import and_, insert, select
 from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
+
 from src.databasemodels import User, Vacation
 from src.services.redis import get_current_superuser, get_current_user
 from src.database import get_async_session

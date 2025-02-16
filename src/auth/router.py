@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi.responses import JSONResponse
 from sqlalchemy import insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.auth.schemas import LoginRequest, UserCreate, UserSessionInfo
 from src.databasemodels import User
 from src.database import get_async_session
@@ -13,7 +14,6 @@ from src.utils.logger import logger
 from src.services.redis import (
     create_session,
     get_current_superuser,
-    get_current_user,
     remove_session,
 )
 

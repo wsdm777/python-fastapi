@@ -1,5 +1,3 @@
-import json
-from unittest import mock
 from fastapi import status
 import pytest
 

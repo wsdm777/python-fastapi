@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+
 from src.user.router import router as userRouter
 from src.auth.router import router as regRouter
 from src.vacation.router import router as vacRouter

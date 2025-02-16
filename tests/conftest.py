@@ -2,13 +2,13 @@ import asyncio
 from datetime import date
 import logging
 from typing import AsyncGenerator
-import fakeredis
 import pytest
 from httpx import ASGITransport, AsyncClient
 from fastapi import status
 from redis.asyncio import Redis
 from sqlalchemy import NullPool
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+
 from src.auth.router import hash_password
 from src.databasemodels import Base, Position, Section, User
 from src.database import get_async_session

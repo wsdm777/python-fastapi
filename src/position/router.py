@@ -5,6 +5,7 @@ from sqlalchemy import insert, select, update, delete
 from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
+
 from src.services.redis import get_current_superuser, get_current_user
 from src.position.schemas import (
     MessageResponse,

@@ -3,11 +3,12 @@ from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 from pydantic import EmailStr
-from sqlalchemy import and_, case, delete, exists, func, insert, select, tuple_, update
+from sqlalchemy import and_, case, delete, exists, func, select, tuple_, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload, aliased
-from src.auth.router import hash_password, verify_password
+
+from src.auth.router import hash_password
 from src.auth.schemas import UserSessionInfo
 from src.utils.logger import logger
 from src.database import get_async_session
