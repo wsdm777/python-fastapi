@@ -17,4 +17,4 @@ python -c "from src.services.redis import listen_for_expiration_keys; import asy
 UVICORN_WORKERS=${UVICORN_WORKERS:-1}
 
 echo "Starting application with $UVICORN_WORKERS workers..."
-exec gunicorn src.main:app --workers "$UVICORN_WORKERS" --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8080
+exec gunicorn src.main:app --workers "$UVICORN_WORKERS" --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000

@@ -2,7 +2,7 @@ services:
   app:
     build: .
     ports:
-      - "8080:8080"
+      - "8000:8000"
     depends_on:
       - db
       - redis
@@ -25,7 +25,6 @@ services:
       - .env
 
   redis:
-    container_name: redis
     image: redis:7.2-alpine
     restart: always
     volumes:

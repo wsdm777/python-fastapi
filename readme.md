@@ -40,6 +40,8 @@ docker-compose up --build
 ## 📁 Структура проекта
 ```
 python-fastapi/
+ ├── alembic/         # Миграции Alembic
+ ├── screenshots/      # Скриншоты Swagger Ui
  ├── src/            # Исходный код приложения
  │   ├── auth/       # Аутентификация и авторизация
  │   │   ├── router.py
@@ -62,16 +64,15 @@ python-fastapi/
  │   ├── databasemodels.py # Определение моделей SQLAlchemy
  │   ├── main.py         # Главный файл FastAPI
  │   ├── config.py       # Конфигурация проекта
- ├── alembic/         # Миграции Alembic
  ├── tests/           # Тесты
- ├── alembic.ini      # Конфигурация Alembic
- ├── docker-compose.yml  # Конфигурация Docker Compose
- ├── Dockerfile       # Конфигурация Docker
- ├── pytest.ini       # Конфигурация Pytest
- ├── redis.ini        # Конфигурация Redis
- ├── requirements.txt # Список зависимостей
  ├── .gitignore       # Игнорируемые файлы в Git
- ├── screenshots      # Скриншоты Swagger Ui
+ ├── Dockerfile       # Конфигурация Docker
+ ├── alembic.ini      # Конфигурация Alembic
+ ├── docker-compose.yaml  # Конфигурация Docker Compose
+ ├── entrypoint.sh    # Bash скрипт для Dockerfile
+ ├── pytest.ini       # Конфигурация Pytest
+ ├── redis.conf       # Конфигурация Redis
+ ├── requirements.txt # Список зависимостей
 ```
 
 ## 📖 Документация API
@@ -79,13 +80,13 @@ python-fastapi/
 Swagger UI доступен по адресу:
 
 ```
-http://localhost:8080/docs
+http://localhost:8000/docs
 ```
 
 ReDoc доступен по адресу:
 
 ```
-http://localhost:8080/redoc
+http://localhost:8000/redoc
 ```
 
 ### Swagger UI
