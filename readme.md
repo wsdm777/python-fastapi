@@ -40,8 +40,8 @@ docker-compose up --build
 ## 📁 Структура проекта
 ```
 python-fastapi/
- ├── alembic/         # Миграции Alembic
- ├── screenshots/      # Скриншоты Swagger Ui
+ ├── alembic/        # Миграции Alembic
+ ├── screenshots/    # Скриншоты Swagger Ui
  ├── src/            # Исходный код приложения
  │   ├── auth/       # Аутентификация и авторизация
  │   │   ├── router.py
@@ -65,6 +65,7 @@ python-fastapi/
  │   ├── main.py         # Главный файл FastAPI
  │   ├── config.py       # Конфигурация проекта
  ├── tests/           # Тесты
+ ├── .dockerignore    # Игнорируемые файлы в Docker
  ├── .gitignore       # Игнорируемые файлы в Git
  ├── Dockerfile       # Конфигурация Docker
  ├── alembic.ini      # Конфигурация Alembic
