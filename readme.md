@@ -21,7 +21,8 @@ cd python-fastapi
 Создай `.env` файл в корне проекта и добавь в него:
 ```ini
 DB_HOST=db
-DB_PORT=5432
+DB_PORT=5432 # Внутренний порт Postgres
+DB_EXPOSED_PORT=5435 # Внешний порт для доступа извне Docker
 DB_NAME="dbname"
 DB_USER="pguser"
 DB_PASS="qwerty"

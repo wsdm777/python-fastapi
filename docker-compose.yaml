@@ -20,7 +20,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "${DB_EXPOSED_PORT}:${DB_PORT}"
     env_file:
       - .env
 
