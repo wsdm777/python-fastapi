@@ -20,7 +20,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
-      - "${DB_EXPOSED_PORT}:${DB_PORT}"
+      - "${DB_EXPOSED_PORT}:5432"
     env_file:
       - .env
 
@@ -31,8 +31,10 @@ services:
       - redisdata:/data
       - ./redis.conf:/usr/local/etc/redis/redis.conf
     ports:
-      - "6379:6379"
+      - "${REDIS_EXPOSED_PORT}:6379"
     command: ["redis-server", "/usr/local/etc/redis/redis.conf", "--bind", "redis", "--port", "6379"]
+    env_file:
+      - .env
 
 volumes:
   app_logs:

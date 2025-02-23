@@ -2,8 +2,8 @@
 
 echo "Waiting for database to be ready..."
 
-until nc -z $DB_HOST $DB_PORT; do
-  echo $DB_HOST $DB_PORT
+until nc -z db 5432; do
+  echo db 5432
   echo "Database is unavailable - sleeping"
   sleep 2
 done
