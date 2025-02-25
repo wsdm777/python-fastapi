@@ -13,6 +13,7 @@ services:
 
   db:
     image: postgres:17.2-alpine
+    restart: on-failure
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASS}
@@ -26,7 +27,7 @@ services:
 
   redis:
     image: redis:7.2-alpine
-    restart: always
+    restart: on-failure
     volumes:
       - redisdata:/data
       - ./redis.conf:/usr/local/etc/redis/redis.conf
